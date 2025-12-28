@@ -1,0 +1,49 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36717.8
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSH-ETL-2025-API", "DSH-ETL-2025-API.csproj", "{EFB589BF-5BD1-4FD6-854B-0E89A586734E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSH-ETL-2025.Domain", "..\DSH-ETL-2025.Domain\DSH-ETL-2025.Domain.csproj", "{0EFC808A-03C5-4772-93AB-B31EBDDA2609}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSH-ETL-2025.Infrastructure", "..\DSH-ETL-2025.Infrastructure\DSH-ETL-2025.Infrastructure.csproj", "{414A7705-D8D8-4EE5-9317-7FF6BD798F80}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSH-ETL-2025.Contract", "..\DSH-ETL-2025.Contract\DSH-ETL-2025.Contract.csproj", "{9327BD1E-7DC2-44A6-9810-8AA2BFD9BE25}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSH-ETL-2025.Application", "..\DSH-ETL-2025.Application\DSH-ETL-2025.Application.csproj", "{4B188A3C-8272-42B2-B73D-9D4B0A87F5AE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EFB589BF-5BD1-4FD6-854B-0E89A586734E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EFB589BF-5BD1-4FD6-854B-0E89A586734E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EFB589BF-5BD1-4FD6-854B-0E89A586734E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EFB589BF-5BD1-4FD6-854B-0E89A586734E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0EFC808A-03C5-4772-93AB-B31EBDDA2609}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0EFC808A-03C5-4772-93AB-B31EBDDA2609}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0EFC808A-03C5-4772-93AB-B31EBDDA2609}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0EFC808A-03C5-4772-93AB-B31EBDDA2609}.Release|Any CPU.Build.0 = Release|Any CPU
+		{414A7705-D8D8-4EE5-9317-7FF6BD798F80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{414A7705-D8D8-4EE5-9317-7FF6BD798F80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{414A7705-D8D8-4EE5-9317-7FF6BD798F80}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{414A7705-D8D8-4EE5-9317-7FF6BD798F80}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9327BD1E-7DC2-44A6-9810-8AA2BFD9BE25}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9327BD1E-7DC2-44A6-9810-8AA2BFD9BE25}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9327BD1E-7DC2-44A6-9810-8AA2BFD9BE25}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9327BD1E-7DC2-44A6-9810-8AA2BFD9BE25}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4B188A3C-8272-42B2-B73D-9D4B0A87F5AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B188A3C-8272-42B2-B73D-9D4B0A87F5AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B188A3C-8272-42B2-B73D-9D4B0A87F5AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B188A3C-8272-42B2-B73D-9D4B0A87F5AE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {29AD8547-A0A5-4B67-B7D2-C239F1860B60}
+	EndGlobalSection
+EndGlobal
