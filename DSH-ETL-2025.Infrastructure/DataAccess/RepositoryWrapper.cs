@@ -1,63 +1,74 @@
 ﻿using DSH_ETL_2025.Contract.DataAccess;
 using DSH_ETL_2025.Contract.Repositories;
+using DSH_ETL_2025.Infrastructure.Repositories;
 
-namespace DSH_ETL_2025.Infrastructure.DataAccess
+namespace DSH_ETL_2025.Infrastructure.DataAccess;
+
+public class RepositoryWrapper : IRepositoryWrapper
 {
-    public class RepositoryWrapper : IRepositoryWrapper, IDisposable
+    private readonly EtlDbContext _dbContext;
+    private IDatasetMetadataRepository? _datasetMetadata;
+    private IMetadataRepository? _metadata;
+    private IDatasetGeospatialDataRepository? _datasetGeospatialData;
+    private IDataFileRepository? _dataFiles;
+    private ISupportingDocumentRepository? _supportingDocuments;
+    private IDatasetMetadataRelationshipRepository? _datasetMetadataRelationships;
+    private IDatasetSupportingDocumentQueueRepository? _datasetSupportingDocumentQueues;
+
+    public RepositoryWrapper(EtlDbContext dbContext)
     {
-        private readonly EtlDbContext _dbContext;
+        _dbContext = dbContext;
+    }
 
-        public IDatasetMetadataRepository DatasetMetadata { get; }
+    /// <inheritdoc />
+    public IDatasetMetadataRepository DatasetMetadata => 
+        _datasetMetadata ??= new DatasetMetadataRepository(_dbContext);
 
-        public RepositoryWrapper(
-            EtlDbContext dbContext,IDatasetMetadataRepository datasetMetadataRepository)
+    /// <inheritdoc />
+    public IMetadataRepository Metadata => 
+        _metadata ??= new MetadataRepository(_dbContext);
+
+    /// <inheritdoc />
+    public IDatasetGeospatialDataRepository DatasetGeospatialData => 
+        _datasetGeospatialData ??= new DatasetGeospatialDataRepository(_dbContext);
+
+    /// <inheritdoc />
+    public IDataFileRepository DataFiles => 
+        _dataFiles ??= new DataFileRepository(_dbContext);
+
+    /// <inheritdoc />
+    public ISupportingDocumentRepository SupportingDocuments => 
+        _supportingDocuments ??= new SupportingDocumentRepository(_dbContext);
+
+    /// <inheritdoc />
+    public IDatasetMetadataRelationshipRepository DatasetMetadataRelationships => 
+        _datasetMetadataRelationships ??= new DatasetMetadataRelationshipRepository(_dbContext);
+
+    /// <inheritdoc />
+    public IDatasetSupportingDocumentQueueRepository DatasetSupportingDocumentQueues => 
+        _datasetSupportingDocumentQueues ??= new DatasetSupportingDocumentQueueRepository(_dbContext);
+
+    /// <inheritdoc />
+    public async Task SaveAsync()
+    {
+        await _dbContext.SaveChangesAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task ExecuteInTransactionAsync(Func<Task> action)
+    {
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+
+        try
         {
-            _dbContext = dbContext;
-            DatasetMetadata = datasetMetadataRepository;
+            await action();
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
         }
-
-        public async Task<int> SaveChangesAsync()
+        catch ( Exception )
         {
-            return await _dbContext.SaveChangesAsync();
-        }
-
-        public async Task ExecuteInTransactionAsync(Func<Task> operation)
-        {
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync();
-            try
-            {
-                await operation();
-                await _dbContext.SaveChangesAsync();
-                await transaction.CommitAsync();
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
-        }
-
-        public async Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation)
-        {
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync();
-            try
-            {
-                var result = await operation();
-                await _dbContext.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return result;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
-        }
-
-        public void Dispose()
-        {
-            _dbContext.Dispose();
-            GC.SuppressFinalize(this);
+            await transaction.RollbackAsync();
+            throw;
         }
     }
 }
