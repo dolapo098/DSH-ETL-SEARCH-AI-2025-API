@@ -1,21 +1,63 @@
 ﻿using System.Linq.Expressions;
 
-namespace DSH_ETL_2025.Contract.DataAccess
+namespace DSH_ETL_2025.Contract.DataAccess;
+
+/// <summary>
+/// Provides a generic repository interface for standard data access operations.
+/// </summary>
+/// <typeparam name="T">The entity type.</typeparam>
+public interface IBaseRepository<T> where T : class
 {
-    public interface IBaseRepository<T> where T : class
-    {
-        Task<T?> GetByIdAsync(int ID);
+    /// <summary>
+    /// Finds an entity by its identifier.
+    /// </summary>
+    /// <param name="id">The entity identifier.</param>
+    /// <returns>The entity if found; otherwise, null.</returns>
+    Task<T?> GetByIdAsync(int id);
 
-        Task<T> InsertAsync(T entity);
+    /// <summary>
+    /// Gets all entities.
+    /// </summary>
+    /// <returns>A collection of all entities.</returns>
+    Task<IEnumerable<T>> GetAllAsync();
 
-        Task<T> UpdateAsync(T entity);
+    /// <summary>
+    /// Finds entities based on a condition.
+    /// </summary>
+    /// <param name="expression">The filter expression.</param>
+    /// <returns>A collection of matching entities.</returns>
+    Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> expression);
 
-        Task DeleteAsync(int ID);
+    /// <summary>
+    /// Gets a single entity based on a condition.
+    /// </summary>
+    /// <param name="expression">The filter expression.</param>
+    /// <returns>The matching entity if found; otherwise, null.</returns>
+    Task<T?> GetSingleAsync(Expression<Func<T, bool>> expression);
 
-        Task DeleteAsync(T entity);
+    /// <summary>
+    /// Gets multiple entities based on a condition.
+    /// </summary>
+    /// <param name="expression">The filter expression.</param>
+    /// <returns>A list of matching entities.</returns>
+    Task<List<T>> GetManyAsync(Expression<Func<T, bool>> expression);
 
-        Task<T?> GetSingleAsync(Expression<Func<T, bool>> filter);
+    /// <summary>
+    /// Inserts a new entity.
+    /// </summary>
+    /// <param name="entity">The entity to insert.</param>
+    Task InsertAsync(T entity);
 
-        IQueryable<T> AsQueryable();
-    }
+    /// <summary>
+    /// Updates an existing entity.
+    /// </summary>
+    /// <param name="entity">The entity to update.</param>
+    /// <returns>The updated entity.</returns>
+    Task<T> UpdateAsync(T entity);
+
+    /// <summary>
+    /// Deletes an entity.
+    /// </summary>
+    /// <param name="entity">The entity to delete.</param>
+    Task DeleteAsync(T entity);
 }
