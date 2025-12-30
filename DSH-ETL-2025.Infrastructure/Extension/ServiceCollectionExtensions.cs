@@ -20,9 +20,21 @@ namespace DSH_ETL_2025.Infrastructure.Extension
                     ?? "Data Source=etl_database.db"));
 
             services.AddScoped<IDatasetMetadataRepository, DatasetMetadataRepository>();
-           
+
+            services.AddScoped<IMetadataRepository, MetadataRepository>();
+
+            services.AddScoped<IDatasetGeospatialDataRepository, DatasetGeospatialDataRepository>();
+
+            services.AddScoped<IDataFileRepository, DataFileRepository>();
+
+            services.AddScoped<ISupportingDocumentRepository, SupportingDocumentRepository>();
+
+            services.AddScoped<IDatasetMetadataRelationshipRepository, DatasetMetadataRelationshipRepository>();
+
+            services.AddScoped<IDatasetSupportingDocumentQueueRepository, DatasetSupportingDocumentQueueRepository>();
+
             services.AddScoped<IRepositoryWrapper, RepositoryWrapper>();
-           
+
             return services;
         }
     }
