@@ -14,14 +14,20 @@ public class DatasetMetadataRelationshipRepository : BaseRepository<DatasetRelat
     /// <inheritdoc />
     public async Task SaveRelationshipAsync(DatasetRelationship relationship)
     {
-        var existing = await _dbSet.FirstOrDefaultAsync(r => 
-            r.DatasetMetadataID == relationship.DatasetMetadataID && 
-            r.DatasetID == relationship.DatasetID && 
+        DatasetRelationship? existing = await _dbSet.FirstOrDefaultAsync(r =>
+            r.DatasetMetadataID == relationship.DatasetMetadataID &&
+            r.DatasetID == relationship.DatasetID &&
             r.RelationshipType == relationship.RelationshipType);
 
-        if ( existing == null )
+        if (existing == null)
         {
             await InsertAsync(relationship);
+        }
+        else
+        {
+            existing.RelationshipUri = relationship.RelationshipUri ?? existing.RelationshipUri;
+
+            await UpdateAsync(existing);
         }
     }
 }
