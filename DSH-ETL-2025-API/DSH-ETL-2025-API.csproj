@@ -13,6 +13,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DSH-ETL-2025.Infrastructure\DSH-ETL-2025.Infrastructure.csproj" />
+    <ProjectReference Include="..\DSH-ETL-2025.Application\DSH-ETL-2025.Application.csproj" />
+    <ProjectReference Include="..\DSH-ETL-2025.Contract\DSH-ETL-2025.Contract.csproj" />
   </ItemGroup>
 
 </Project>
