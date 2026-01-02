@@ -14,10 +14,6 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IDatasetDiscoveryService, DatasetDiscoveryService>();
 
-        services.AddScoped<IEmbeddingService, EmbeddingService>();
-
-        services.AddScoped<IMetadataResourceService, MetadataResourceService>();
-
         return services;
     }
 }

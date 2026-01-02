@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSH-ETL-2025.Application", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSH-ETL-2025.UnitTests", "..\DSH-ETL-2025.UnitTests\DSH-ETL-2025.UnitTests.csproj", "{34F7774D-9411-47DB-95FB-CC4D9541F596}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSH-ETL-2025.Workers", "..\DSH-ETL-2025.Workers\DSH-ETL-2025.Workers.csproj", "{C5929A2B-E463-4071-AE15-C7EC24DD3D9F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{34F7774D-9411-47DB-95FB-CC4D9541F596}.Release|x64.Build.0 = Release|Any CPU
 		{34F7774D-9411-47DB-95FB-CC4D9541F596}.Release|x86.ActiveCfg = Release|Any CPU
 		{34F7774D-9411-47DB-95FB-CC4D9541F596}.Release|x86.Build.0 = Release|Any CPU
+		{C5929A2B-E463-4071-AE15-C7EC24DD3D9F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C5929A2B-E463-4071-AE15-C7EC24DD3D9F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C5929A2B-E463-4071-AE15-C7EC24DD3D9F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C5929A2B-E463-4071-AE15-C7EC24DD3D9F}.Debug|x64.Build.0 = Debug|Any CPU
+		{C5929A2B-E463-4071-AE15-C7EC24DD3D9F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C5929A2B-E463-4071-AE15-C7EC24DD3D9F}.Debug|x86.Build.0 = Debug|Any CPU
+		{C5929A2B-E463-4071-AE15-C7EC24DD3D9F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C5929A2B-E463-4071-AE15-C7EC24DD3D9F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C5929A2B-E463-4071-AE15-C7EC24DD3D9F}.Release|x64.ActiveCfg = Release|Any CPU
+		{C5929A2B-E463-4071-AE15-C7EC24DD3D9F}.Release|x64.Build.0 = Release|Any CPU
+		{C5929A2B-E463-4071-AE15-C7EC24DD3D9F}.Release|x86.ActiveCfg = Release|Any CPU
+		{C5929A2B-E463-4071-AE15-C7EC24DD3D9F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
