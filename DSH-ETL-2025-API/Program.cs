@@ -17,6 +17,11 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddApplicationServices();
+
+builder.Services.AddHostedService<DSH_ETL_2025_API.HostedServices.EmbeddingProcessingService>();
+
+builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
