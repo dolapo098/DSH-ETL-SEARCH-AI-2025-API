@@ -18,15 +18,15 @@ public interface IBaseRepository<T> where T : class
     /// <summary>
     /// Gets all entities.
     /// </summary>
-    /// <returns>A collection of all entities.</returns>
-    Task<IEnumerable<T>> GetAllAsync();
+    /// <returns>A list of all entities.</returns>
+    Task<List<T>> GetAllAsync();
 
     /// <summary>
     /// Finds entities based on a condition.
     /// </summary>
     /// <param name="expression">The filter expression.</param>
-    /// <returns>A collection of matching entities.</returns>
-    Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> expression);
+    /// <returns>A list of matching entities.</returns>
+    Task<List<T>> FindAsync(Expression<Func<T, bool>> expression);
 
     /// <summary>
     /// Gets a single entity based on a condition.
@@ -46,7 +46,8 @@ public interface IBaseRepository<T> where T : class
     /// Inserts a new entity.
     /// </summary>
     /// <param name="entity">The entity to insert.</param>
-    Task InsertAsync(T entity);
+    /// <returns>The inserted entity.</returns>
+    Task<T> InsertAsync(T entity);
 
     /// <summary>
     /// Updates an existing entity.

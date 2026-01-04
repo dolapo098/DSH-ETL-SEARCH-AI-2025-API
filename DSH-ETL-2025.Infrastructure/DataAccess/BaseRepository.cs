@@ -22,39 +22,42 @@ public abstract class BaseRepository<T> : IBaseRepository<T> where T : class
     }
 
     /// <inheritdoc />
-    public virtual async Task<IEnumerable<T>> GetAllAsync()
+    public virtual async Task<List<T>> GetAllAsync()
     {
         return await _dbSet.AsNoTracking().ToListAsync();
     }
 
     /// <inheritdoc />
-    public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> expression)
+    public virtual async Task<List<T>> FindAsync(Expression<Func<T, bool>> predicate)
     {
-        return await _dbSet.AsNoTracking().Where(expression).ToListAsync();
+        return await _dbSet.AsNoTracking().Where(predicate).ToListAsync();
     }
 
     /// <inheritdoc />
-    public virtual async Task<T?> GetSingleAsync(Expression<Func<T, bool>> expression)
+    public virtual async Task<T?> GetSingleAsync(Expression<Func<T, bool>> predicate)
     {
-        return await _dbSet.AsNoTracking().FirstOrDefaultAsync(expression);
+        return await _dbSet.AsNoTracking().FirstOrDefaultAsync(predicate);
     }
 
     /// <inheritdoc />
-    public virtual async Task<List<T>> GetManyAsync(Expression<Func<T, bool>> expression)
+    public virtual async Task<List<T>> GetManyAsync(Expression<Func<T, bool>> predicate)
     {
-        return await _dbSet.AsNoTracking().Where(expression).ToListAsync();
+        return await _dbSet.AsNoTracking().Where(predicate).ToListAsync();
     }
 
     /// <inheritdoc />
-    public virtual async Task InsertAsync(T entity)
+    public virtual async Task<T> InsertAsync(T entity)
     {
         await _dbSet.AddAsync(entity);
+
+        return entity;
     }
 
     /// <inheritdoc />
     public virtual async Task<T> UpdateAsync(T entity)
     {
         _dbSet.Update(entity);
+
         await Task.CompletedTask;
 
         return entity;
@@ -63,34 +66,14 @@ public abstract class BaseRepository<T> : IBaseRepository<T> where T : class
     /// <inheritdoc />
     public virtual async Task DeleteAsync(T entity)
     {
-        var entry = _dbContext.Entry(entity);
-
-        if ( entry.State == EntityState.Detached )
-        {
-            var existingEntity = await _dbSet.FindAsync(GetKeyValue(entity));
-
-            if ( existingEntity != null )
-            {
-                _dbContext.Entry(existingEntity).CurrentValues.SetValues(entity);
-                _dbSet.Remove(existingEntity);
-            }
-            else
-            {
-                _dbSet.Attach(entity);
-                _dbSet.Remove(entity);
-            }
-        }
-        else
-        {
-            _dbSet.Remove(entity);
-        }
+        _dbSet.Remove(entity);
 
         await Task.CompletedTask;
     }
 
     protected object? GetKeyValue(T entity)
     {
-        var keyName = _dbContext.Model.FindEntityType(typeof(T))?.FindPrimaryKey()?.Properties
+        string? keyName = _dbContext.Model.FindEntityType(typeof(T))?.FindPrimaryKey()?.Properties
             .Select(x => x.Name).FirstOrDefault();
 
         if ( keyName == null )
