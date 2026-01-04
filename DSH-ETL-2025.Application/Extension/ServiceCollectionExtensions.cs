@@ -16,6 +16,8 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IEmbeddingService, EmbeddingService>();
 
+        services.AddScoped<IMetadataResourceService, MetadataResourceService>();
+
         return services;
     }
 }

@@ -13,11 +13,11 @@ public class MetadataResourceService : IMetadataResourceService
     {
         Console.WriteLine($"Persisting {resources.Count} online resources for {identifier}");
 
-        foreach (OnlineResource resource in resources)
+        foreach ( OnlineResource resource in resources )
         {
             try
             {
-                switch (resource.Function)
+                switch ( resource.Function )
                 {
                     case ResourceFunction.Download:
                     case ResourceFunction.FileAccess:
@@ -41,13 +41,11 @@ public class MetadataResourceService : IMetadataResourceService
                         break;
                 }
             }
-            catch (Exception ex)
+            catch ( Exception ex )
             {
                 Console.WriteLine($"Error persisting resource {resource.Url} for {identifier}: {ex.Message}");
             }
         }
-
-        await Task.CompletedTask;
     }
 
     private async Task HandleDataFileAsync(string identifier, int datasetMetadataID, OnlineResource resource, IRepositoryWrapper repositoryWrapper)
@@ -84,4 +82,3 @@ public class MetadataResourceService : IMetadataResourceService
         await repositoryWrapper.SupportingDocuments.SaveSupportingDocumentAsync(supportingDoc);
     }
 }
-
