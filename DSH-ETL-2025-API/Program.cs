@@ -2,6 +2,7 @@
 using DSH_ETL_2025.Infrastructure.DataAccess;
 using DSH_ETL_2025.Infrastructure.Extension;
 using DSH_ETL_2025.Application.Extension;
+using DSH_ETL_2025_API.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,8 @@ builder.Services.AddHostedService<DSH_ETL_2025_API.HostedServices.EmbeddingProce
 builder.Services.AddHttpClient();
 
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
