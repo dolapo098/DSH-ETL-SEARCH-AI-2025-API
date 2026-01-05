@@ -28,6 +28,15 @@ public class Iso19115DocumentProcessor : IDocumentProcessor
             return null;
         }
 
+        // Validate that content is XML, not HTML
+        if (string.IsNullOrWhiteSpace(content) || 
+            content.TrimStart().StartsWith("<!doctype html", StringComparison.OrdinalIgnoreCase) ||
+            content.TrimStart().StartsWith("<html", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"Warning: Skipping ISO 19115 processing for {identifier} - content is not XML (likely HTML)");
+            return datasetMetadata;
+        }
+
         try
         {
             Dictionary<string, string> fields = _iso19115Parser.ExtractIso19115Fields(content);
@@ -36,15 +45,21 @@ public class Iso19115DocumentProcessor : IDocumentProcessor
 
             Domain.ValueObjects.TemporalExtent? temporal = _iso19115Parser.ExtractTemporalExtent(content);
 
+            string? abstractValue = fields.GetValueOrDefault("Abstract");
+            string? contactValue = fields.GetValueOrDefault("Contact");
+            string? metadataStandardValue = fields.GetValueOrDefault("MetadataStandard");
+            string? standardVersionValue = fields.GetValueOrDefault("StandardVersion");
+            string? statusValue = fields.GetValueOrDefault("Status");
+
             DatasetGeospatialData geoData = new DatasetGeospatialData
             {
                 DatasetMetadataID = datasetMetadata.DatasetMetadataID,
                 FileIdentifier = identifier,
-                Abstract = fields.GetValueOrDefault("Abstract"),
-                Contact = fields.GetValueOrDefault("Contact"),
-                MetadataStandard = fields.GetValueOrDefault("MetadataStandard"),
-                StandardVersion = fields.GetValueOrDefault("StandardVersion"),
-                Status = fields.GetValueOrDefault("Status"),
+                Abstract = string.IsNullOrWhiteSpace(abstractValue) ? null : abstractValue,
+                Contact = string.IsNullOrWhiteSpace(contactValue) ? null : contactValue,
+                MetadataStandard = string.IsNullOrWhiteSpace(metadataStandardValue) ? null : metadataStandardValue,
+                StandardVersion = string.IsNullOrWhiteSpace(standardVersionValue) ? null : standardVersionValue,
+                Status = string.IsNullOrWhiteSpace(statusValue) ? null : statusValue,
                 TemporalExtentStart = temporal?.Begin,
                 TemporalExtentEnd = temporal?.End
             };

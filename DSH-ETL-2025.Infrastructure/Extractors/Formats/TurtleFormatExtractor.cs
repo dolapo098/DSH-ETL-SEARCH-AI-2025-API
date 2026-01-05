@@ -11,6 +11,6 @@ public class TurtleFormatExtractor : BaseDocumentFormatExtractor
     /// <inheritdoc />
     public override DocumentType SupportedType => DocumentType.Turtle;
 
-    protected override string? GetFormatParameter() => "turtle";
+    protected override string? GetFormatParameter() => "ttl";
 }
 

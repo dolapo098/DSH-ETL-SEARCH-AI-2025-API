@@ -11,6 +11,6 @@ public class JsonLdFormatExtractor : BaseDocumentFormatExtractor
     /// <inheritdoc />
     public override DocumentType SupportedType => DocumentType.JsonLd;
 
-    protected override string? GetFormatParameter() => "jsonld";
+    protected override string? GetFormatParameter() => "schema.org";
 }
 

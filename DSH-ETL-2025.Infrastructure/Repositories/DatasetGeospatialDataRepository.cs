@@ -16,16 +16,16 @@ public class DatasetGeospatialDataRepository : BaseRepository<DatasetGeospatialD
     {
         var existing = await _dbSet.FirstOrDefaultAsync(g => g.FileIdentifier == geospatialData.FileIdentifier);
 
-        if ( existing != null )
+        if (existing != null)
         {
-            existing.Abstract = geospatialData.Abstract ?? existing.Abstract;
-            existing.TemporalExtentStart = geospatialData.TemporalExtentStart ?? existing.TemporalExtentStart;
-            existing.TemporalExtentEnd = geospatialData.TemporalExtentEnd ?? existing.TemporalExtentEnd;
-            existing.BoundingBox = geospatialData.BoundingBox ?? existing.BoundingBox;
-            existing.Contact = geospatialData.Contact ?? existing.Contact;
-            existing.MetadataStandard = geospatialData.MetadataStandard ?? existing.MetadataStandard;
-            existing.StandardVersion = geospatialData.StandardVersion ?? existing.StandardVersion;
-            existing.Status = geospatialData.Status ?? existing.Status;
+            existing.Abstract = geospatialData.Abstract;
+            existing.TemporalExtentStart = geospatialData.TemporalExtentStart;
+            existing.TemporalExtentEnd = geospatialData.TemporalExtentEnd;
+            existing.BoundingBox = geospatialData.BoundingBox;
+            existing.Contact = geospatialData.Contact;
+            existing.MetadataStandard = geospatialData.MetadataStandard;
+            existing.StandardVersion = geospatialData.StandardVersion;
+            existing.Status = geospatialData.Status;
 
             await UpdateAsync(existing);
         }

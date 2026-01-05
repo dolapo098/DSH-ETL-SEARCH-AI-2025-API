@@ -21,11 +21,15 @@ public class MetadataResourceService : IMetadataResourceService
                 {
                     case ResourceFunction.Download:
                     case ResourceFunction.FileAccess:
+
+                        // Treat 'Download' and 'FileAccess' resources as data files to be downloaded
                         await HandleDataFileAsync(identifier, datasetMetadataID, resource, repositoryWrapper);
 
                         break;
 
                     case ResourceFunction.Information:
+
+                        // Treat 'Information' resources as supporting documents for extracting contents for embeddings
                         await HandleSupportingDocumentAsync(identifier, datasetMetadataID, resource, repositoryWrapper);
 
                         break;
