@@ -40,6 +40,21 @@ public class EtlService : IEtlService
     {
         try
         {
+            bool isFullyProcessed = await IsDatasetFullyProcessedAsync(identifier);
+            
+            if (isFullyProcessed)
+            {
+                _logger.LogInformation(
+                    "Dataset {Identifier} already fully processed. Skipping.",
+                    identifier);
+                
+                return new ProcessResultDto
+                {
+                    IsSuccess = true,
+                    Message = $"Dataset {identifier} already fully processed. Skipped."
+                };
+            }
+            
             if (!await IsIdentifierValidAsync(identifier))
             {
                 return new ProcessResultDto
@@ -149,6 +164,7 @@ public class EtlService : IEtlService
         _processedCount = 0;
 
         List<string> failedIdentifiers = new List<string>();
+        int skippedCount = 0;
 
         foreach (string identifier in identifiers)
         {
@@ -156,19 +172,25 @@ public class EtlService : IEtlService
             {
                 ProcessResultDto result = await ProcessDatasetAsync(identifier.Trim());
 
-                if (!result.IsSuccess)
+                if (result.IsSuccess && result.Message.Contains("already fully processed"))
+                {
+                    skippedCount++;
+                }
+                else if (!result.IsSuccess)
                 {
                     failedIdentifiers.Add(identifier.Trim());
                 }
             }
         }
 
+        string message = failedIdentifiers.Count == 0
+            ? $"All {_processedCount} datasets processed successfully. {skippedCount} skipped (already processed)."
+            : $"Processed {_processedCount} of {_totalCount} datasets. {failedIdentifiers.Count} failed. {skippedCount} skipped (already processed).";
+
         return new ProcessResultDto
         {
             IsSuccess = failedIdentifiers.Count == 0,
-            Message = failedIdentifiers.Count == 0
-                ? $"All {_processedCount} datasets processed successfully"
-                : $"Processed {_processedCount} of {_totalCount} datasets. {failedIdentifiers.Count} failed.",
+            Message = message,
             FilePath = identifiersFilePath
         };
     }
@@ -185,6 +207,35 @@ public class EtlService : IEtlService
             Total = total,
             Percentage = total > 0 ? (processed * 100.0 / total) : 0
         });
+    }
+
+    private async Task<bool> IsDatasetFullyProcessedAsync(string identifier)
+    {
+        DatasetMetadata? existingMetadata = await _repositoryWrapper.DatasetMetadata.GetMetadataAsync(identifier);
+        
+        if (existingMetadata == null)
+        {
+            return false;
+        }
+        
+        bool metadataComplete = !string.IsNullOrWhiteSpace(existingMetadata.Title) 
+                               && !string.IsNullOrWhiteSpace(existingMetadata.Description);
+        
+        if (!metadataComplete)
+        {
+            return false;
+        }
+        
+        DatasetSupportingDocumentQueue? queueItem = await _repositoryWrapper
+            .DatasetSupportingDocumentQueues
+            .GetQueueItemByMetadataIdAsync(existingMetadata.DatasetMetadataID);
+        
+        if (queueItem == null)
+        {
+            return false;
+        }
+        
+        return true;
     }
 
     private async Task<bool> IsIdentifierValidAsync(string identifier)

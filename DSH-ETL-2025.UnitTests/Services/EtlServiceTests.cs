@@ -24,6 +24,7 @@ public class EtlServiceTests
     private Mock<IDatasetMetadataRepository> _datasetMetadataRepoMock = null!;
     private Mock<IMetadataRepository> _metadataRepoMock = null!;
     private Mock<IDatasetMetadataRelationshipRepository> _relationshipRepoMock = null!;
+    private Mock<IDatasetSupportingDocumentQueueRepository> _queueRepoMock = null!;
     private EtlService _etlService = null!;
     private string _testIdentifier = "test-id";
     private string _testFilePath = $"test-identifiers-{Guid.NewGuid()}.txt";
@@ -39,10 +40,12 @@ public class EtlServiceTests
         _datasetMetadataRepoMock = new Mock<IDatasetMetadataRepository>();
         _metadataRepoMock = new Mock<IMetadataRepository>();
         _relationshipRepoMock = new Mock<IDatasetMetadataRelationshipRepository>();
+        _queueRepoMock = new Mock<IDatasetSupportingDocumentQueueRepository>();
 
         _repositoryWrapperMock.SetupGet(r => r.DatasetMetadata).Returns(_datasetMetadataRepoMock.Object);
         _repositoryWrapperMock.SetupGet(r => r.Metadata).Returns(_metadataRepoMock.Object);
         _repositoryWrapperMock.SetupGet(r => r.DatasetMetadataRelationships).Returns(_relationshipRepoMock.Object);
+        _repositoryWrapperMock.SetupGet(r => r.DatasetSupportingDocumentQueues).Returns(_queueRepoMock.Object);
 
         _jsonProcessorMock.Setup(p => p.SupportedType).Returns(DocumentType.Json);
 
@@ -94,7 +97,90 @@ public class EtlServiceTests
     private void SetupSuccessfulMetadataRetrieval()
     {
         _datasetMetadataRepoMock.Setup(r => r.GetMetadataAsync(_testIdentifier))
-            .ReturnsAsync(new DatasetMetadata { FileIdentifier = _testIdentifier });
+            .ReturnsAsync((DatasetMetadata?)null);
+    }
+
+    private void SetupFullyProcessedDataset()
+    {
+        var metadata = new DatasetMetadata
+        {
+            DatasetMetadataID = 1,
+            FileIdentifier = _testIdentifier,
+            Title = "Test Title",
+            Description = "Test Description"
+        };
+
+        var queueItem = new DatasetSupportingDocumentQueue
+        {
+            DatasetMetadataID = 1,
+            ProcessedTitleForEmbedding = true,
+            ProcessedAbstractForEmbedding = true,
+            ProcessedSupportingDocsForEmbedding = true,
+            IsProcessing = false
+        };
+
+        _datasetMetadataRepoMock.Setup(r => r.GetMetadataAsync(_testIdentifier))
+            .ReturnsAsync(metadata);
+
+        _queueRepoMock.Setup(r => r.GetQueueItemByMetadataIdAsync(1))
+            .ReturnsAsync(queueItem);
+    }
+
+    private void SetupPartiallyProcessedDataset()
+    {
+        var metadata = new DatasetMetadata
+        {
+            DatasetMetadataID = 1,
+            FileIdentifier = _testIdentifier,
+            Title = "Test Title",
+            Description = "Test Description"
+        };
+
+        var queueItem = new DatasetSupportingDocumentQueue
+        {
+            DatasetMetadataID = 1,
+            ProcessedTitleForEmbedding = true,
+            ProcessedAbstractForEmbedding = false,
+            ProcessedSupportingDocsForEmbedding = false,
+            IsProcessing = false
+        };
+
+        _datasetMetadataRepoMock.Setup(r => r.GetMetadataAsync(_testIdentifier))
+            .ReturnsAsync(metadata);
+
+        _queueRepoMock.Setup(r => r.GetQueueItemByMetadataIdAsync(1))
+            .ReturnsAsync(queueItem);
+    }
+
+    private void SetupIncompleteMetadata()
+    {
+        var metadata = new DatasetMetadata
+        {
+            DatasetMetadataID = 1,
+            FileIdentifier = _testIdentifier,
+            Title = "Test Title",
+            Description = null
+        };
+
+        _datasetMetadataRepoMock.Setup(r => r.GetMetadataAsync(_testIdentifier))
+            .ReturnsAsync(metadata);
+    }
+
+    private void SetupMetadataWithoutQueue()
+    {
+        var metadata = new DatasetMetadata
+        {
+            DatasetMetadataID = 1,
+            FileIdentifier = _testIdentifier,
+            Title = "Test Title",
+            Description = "Test Description"
+        };
+
+        _datasetMetadataRepoMock.Setup(r => r.GetMetadataAsync(_testIdentifier))
+            .ReturnsAsync(metadata);
+
+        _queueRepoMock.Setup(r => r.GetQueueItemByMetadataIdAsync(1))
+            .ReturnsAsync((DatasetSupportingDocumentQueue?)null);
     }
 
     private void SetupSuccessfulTransaction()
@@ -172,6 +258,89 @@ public class EtlServiceTests
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
+    }
+
+    [TestMethod]
+    public async Task ProcessDatasetAsync_ShouldSkip_WhenDatasetIsFullyProcessed()
+    {
+        // Arrange
+        SetupFullyProcessedDataset();
+
+        // Act
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+
+        // Assert
+        Assert.IsTrue(result.IsSuccess);
+        Assert.IsTrue(result.Message.Contains("already fully processed"));
+        Assert.IsTrue(result.Message.Contains("Skipped"));
+
+        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier), Times.Never);
+        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, It.IsAny<IRepositoryWrapper>()), Times.Never);
+
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("already fully processed")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task ProcessDatasetAsync_ShouldProcess_WhenDatasetNotProcessed()
+    {
+        // Arrange
+        SetupSuccessfulMetadataRetrieval();
+
+        // Act
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+
+        // Assert
+        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier), Times.Once);
+        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task ProcessDatasetAsync_ShouldProcess_WhenDatasetPartiallyProcessed()
+    {
+        // Arrange
+        SetupPartiallyProcessedDataset();
+
+        // Act
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+
+        // Assert
+        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier), Times.Once);
+        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task ProcessDatasetAsync_ShouldProcess_WhenMetadataIncomplete()
+    {
+        // Arrange
+        SetupIncompleteMetadata();
+
+        // Act
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+
+        // Assert
+        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier), Times.Once);
+        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task ProcessDatasetAsync_ShouldProcess_WhenMetadataExistsButQueueDoesNot()
+    {
+        // Arrange
+        SetupMetadataWithoutQueue();
+
+        // Act
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+
+        // Assert
+        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier), Times.Once);
+        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object), Times.Once);
     }
 }
 

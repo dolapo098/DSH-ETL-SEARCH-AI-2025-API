@@ -19,5 +19,12 @@ public class DatasetSupportingDocumentQueueRepository : BaseRepository<DatasetSu
             (!q.ProcessedTitleForEmbedding || !q.ProcessedAbstractForEmbedding || !q.ProcessedSupportingDocsForEmbedding))
             .ToListAsync();
     }
+
+    /// <inheritdoc />
+    public async Task<DatasetSupportingDocumentQueue?> GetQueueItemByMetadataIdAsync(int datasetMetadataId)
+    {
+        return await _dbSet
+            .FirstOrDefaultAsync(q => q.DatasetMetadataID == datasetMetadataId);
+    }
 }
 

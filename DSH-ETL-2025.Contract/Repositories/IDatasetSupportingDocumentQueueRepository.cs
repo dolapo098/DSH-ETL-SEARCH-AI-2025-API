@@ -13,4 +13,11 @@ public interface IDatasetSupportingDocumentQueueRepository : IBaseRepository<Dat
     /// </summary>
     /// <returns>A list of pending queue items.</returns>
     Task<List<DatasetSupportingDocumentQueue>> GetPendingQueueItemsAsync();
+
+    /// <summary>
+    /// Gets a queue item by dataset metadata ID.
+    /// </summary>
+    /// <param name="datasetMetadataId">The dataset metadata ID.</param>
+    /// <returns>The queue item if found; otherwise, null.</returns>
+    Task<DatasetSupportingDocumentQueue?> GetQueueItemByMetadataIdAsync(int datasetMetadataId);
 }
