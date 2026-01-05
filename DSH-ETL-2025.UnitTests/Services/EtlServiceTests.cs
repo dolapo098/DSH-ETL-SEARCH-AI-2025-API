@@ -7,6 +7,7 @@ using DSH_ETL_2025.Contract.Repositories;
 using DSH_ETL_2025.Contract.ResponseDtos;
 using DSH_ETL_2025.Domain.Entities;
 using DSH_ETL_2025.Domain.Enums;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 
@@ -19,6 +20,10 @@ public class EtlServiceTests
     private Mock<IRepositoryWrapper> _repositoryWrapperMock = null!;
     private Mock<IOptions<EtlSettings>> _etlSettingsMock = null!;
     private Mock<IDocumentProcessor> _jsonProcessorMock = null!;
+    private Mock<ILogger<EtlService>> _loggerMock = null!;
+    private Mock<IDatasetMetadataRepository> _datasetMetadataRepoMock = null!;
+    private Mock<IMetadataRepository> _metadataRepoMock = null!;
+    private Mock<IDatasetMetadataRelationshipRepository> _relationshipRepoMock = null!;
     private EtlService _etlService = null!;
     private string _testIdentifier = "test-id";
     private string _testFilePath = $"test-identifiers-{Guid.NewGuid()}.txt";
@@ -30,14 +35,14 @@ public class EtlServiceTests
         _repositoryWrapperMock = new Mock<IRepositoryWrapper>();
         _etlSettingsMock = new Mock<IOptions<EtlSettings>>();
         _jsonProcessorMock = new Mock<IDocumentProcessor>();
+        _loggerMock = new Mock<ILogger<EtlService>>();
+        _datasetMetadataRepoMock = new Mock<IDatasetMetadataRepository>();
+        _metadataRepoMock = new Mock<IMetadataRepository>();
+        _relationshipRepoMock = new Mock<IDatasetMetadataRelationshipRepository>();
 
-        Mock<IDatasetMetadataRepository> datasetMetadataRepoMock = new Mock<IDatasetMetadataRepository>();
-        Mock<IMetadataRepository> metadataRepoMock = new Mock<IMetadataRepository>();
-        Mock<IDatasetMetadataRelationshipRepository> relationshipRepoMock = new Mock<IDatasetMetadataRelationshipRepository>();
-
-        _repositoryWrapperMock.SetupGet(r => r.DatasetMetadata).Returns(datasetMetadataRepoMock.Object);
-        _repositoryWrapperMock.SetupGet(r => r.Metadata).Returns(metadataRepoMock.Object);
-        _repositoryWrapperMock.SetupGet(r => r.DatasetMetadataRelationships).Returns(relationshipRepoMock.Object);
+        _repositoryWrapperMock.SetupGet(r => r.DatasetMetadata).Returns(_datasetMetadataRepoMock.Object);
+        _repositoryWrapperMock.SetupGet(r => r.Metadata).Returns(_metadataRepoMock.Object);
+        _repositoryWrapperMock.SetupGet(r => r.DatasetMetadataRelationships).Returns(_relationshipRepoMock.Object);
 
         _jsonProcessorMock.Setup(p => p.SupportedType).Returns(DocumentType.Json);
 
@@ -50,7 +55,8 @@ public class EtlServiceTests
             _metadataExtractorMock.Object,
             new[] { _jsonProcessorMock.Object },
             _repositoryWrapperMock.Object,
-            _etlSettingsMock.Object);
+            _etlSettingsMock.Object,
+            _loggerMock.Object);
 
         if (File.Exists(_testFilePath))
         {
@@ -58,6 +64,10 @@ public class EtlServiceTests
         }
 
         File.WriteAllLines(_testFilePath, new[] { _testIdentifier });
+
+        SetupSuccessfulExtraction();
+        SetupSuccessfulMetadataRetrieval();
+        SetupSuccessfulTransaction();
     }
 
     [TestCleanup]
@@ -69,19 +79,39 @@ public class EtlServiceTests
         }
     }
 
+    private void SetupSuccessfulExtraction()
+    {
+        _metadataExtractorMock.Setup(e => e.ExtractAllFormatsAsync(_testIdentifier))
+            .ReturnsAsync(new Dictionary<DocumentType, string> { { DocumentType.Json, "{}" } });
+    }
+
+    private void SetupFailedExtraction()
+    {
+        _metadataExtractorMock.Setup(e => e.ExtractAllFormatsAsync(_testIdentifier))
+            .ThrowsAsync(new Exception("Test error"));
+    }
+
+    private void SetupSuccessfulMetadataRetrieval()
+    {
+        _datasetMetadataRepoMock.Setup(r => r.GetMetadataAsync(_testIdentifier))
+            .ReturnsAsync(new DatasetMetadata { FileIdentifier = _testIdentifier });
+    }
+
+    private void SetupSuccessfulTransaction()
+    {
+        _repositoryWrapperMock.Setup(r => r.ExecuteInTransactionAsync(It.IsAny<Func<Task>>()))
+            .Returns(async (Func<Task> operation) => await operation());
+    }
+
+    private void SetupFailedFormatProcessing()
+    {
+        _jsonProcessorMock.Setup(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, It.IsAny<IRepositoryWrapper>()))
+            .ThrowsAsync(new Exception("Processing failed"));
+    }
+
     [TestMethod]
     public async Task ProcessDatasetAsync_ShouldReturnSuccess_WhenProcessingSucceeds()
     {
-        // Arrange
-        _metadataExtractorMock.Setup(e => e.ExtractAllFormatsAsync(_testIdentifier))
-            .ReturnsAsync(new Dictionary<DocumentType, string> { { DocumentType.Json, "{}" } });
-
-        _repositoryWrapperMock.Setup(r => r.DatasetMetadata.GetMetadataAsync(_testIdentifier))
-            .ReturnsAsync(new DatasetMetadata { FileIdentifier = _testIdentifier });
-
-        _repositoryWrapperMock.Setup(r => r.ExecuteInTransactionAsync(It.IsAny<Func<Task>>()))
-            .Returns(async (Func<Task> operation) => await operation());
-
         // Act
         ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
 
@@ -99,8 +129,49 @@ public class EtlServiceTests
 
         // Assert
         Assert.IsFalse(result.IsSuccess);
-
         Assert.AreEqual("Identifier not found in metadata identifiers file", result.Error);
+    }
+
+    [TestMethod]
+    public async Task ProcessDatasetAsync_ShouldLogError_WhenProcessingFails()
+    {
+        // Arrange
+        SetupFailedExtraction();
+
+        // Act
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+
+        // Assert
+        Assert.IsFalse(result.IsSuccess);
+        
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error processing")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task ProcessDatasetAsync_ShouldLogWarning_WhenFormatProcessingFails()
+    {
+        // Arrange
+        SetupFailedFormatProcessing();
+
+        // Act
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+
+        // Assert
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to process")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
     }
 }
 

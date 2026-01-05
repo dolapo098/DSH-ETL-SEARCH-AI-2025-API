@@ -3,16 +3,19 @@ using DSH_ETL_2025.Contract.Processors;
 using DSH_ETL_2025.Contract.DataAccess;
 using DSH_ETL_2025.Domain.Entities;
 using DSH_ETL_2025.Domain.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace DSH_ETL_2025.Infrastructure.Processors;
 
 public class Iso19115DocumentProcessor : IDocumentProcessor
 {
     private readonly IIso19115Parser _iso19115Parser;
+    private readonly ILogger<Iso19115DocumentProcessor> _logger;
 
-    public Iso19115DocumentProcessor(IIso19115Parser iso19115Parser)
+    public Iso19115DocumentProcessor(IIso19115Parser iso19115Parser, ILogger<Iso19115DocumentProcessor> logger)
     {
         _iso19115Parser = iso19115Parser;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -33,7 +36,9 @@ public class Iso19115DocumentProcessor : IDocumentProcessor
             content.TrimStart().StartsWith("<!doctype html", StringComparison.OrdinalIgnoreCase) ||
             content.TrimStart().StartsWith("<html", StringComparison.OrdinalIgnoreCase))
         {
-            Console.WriteLine($"Warning: Skipping ISO 19115 processing for {identifier} - content is not XML (likely HTML)");
+            _logger.LogWarning(
+                "Skipping ISO 19115 processing for {Identifier} - content is not XML (likely HTML)",
+                identifier);
             return datasetMetadata;
         }
 
@@ -73,7 +78,9 @@ public class Iso19115DocumentProcessor : IDocumentProcessor
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Warning: Failed to process ISO 19115 geospatial data for {identifier}. Error: {ex.Message}");
+            _logger.LogWarning(ex,
+                "Failed to process ISO 19115 geospatial data for {Identifier}",
+                identifier);
         }
 
         return datasetMetadata;

@@ -1,11 +1,14 @@
 using DSH_ETL_2025.Infrastructure.Parsers;
 using DSH_ETL_2025.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
+using Moq;
 
 namespace DSH_ETL_2025.UnitTests.Parsers;
 
 [TestClass]
 public class Iso19115ParserTests
 {
+    private Mock<ILogger<Iso19115Parser>> _loggerMock = null!;
     private Iso19115Parser _parser = null!;
     private string _testXml = @"<?xml version=""1.0"" encoding=""UTF-8""?>
 <gmd:MD_Metadata xmlns:gmd=""http://www.isotc211.org/2005/gmd"" xmlns:gco=""http://www.isotc211.org/2005/gco"" xmlns:gml=""http://www.opengis.net/gml/3.2"">
@@ -43,7 +46,8 @@ public class Iso19115ParserTests
     [TestInitialize]
     public void TestInitialize()
     {
-        _parser = new Iso19115Parser();
+        _loggerMock = new Mock<ILogger<Iso19115Parser>>();
+        _parser = new Iso19115Parser(_loggerMock.Object);
     }
 
     [TestMethod]

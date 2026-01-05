@@ -3,15 +3,25 @@ using DSH_ETL_2025.Contract.Services;
 using DSH_ETL_2025.Domain.Entities;
 using DSH_ETL_2025.Domain.Enums;
 using DSH_ETL_2025.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 
 namespace DSH_ETL_2025.Application.Services;
 
 public class MetadataResourceService : IMetadataResourceService
 {
+    private readonly ILogger<MetadataResourceService> _logger;
+
+    public MetadataResourceService(ILogger<MetadataResourceService> logger)
+    {
+        _logger = logger;
+    }
     /// <inheritdoc />
     public async Task PersistResourcesAsync(string identifier, int datasetMetadataID, List<OnlineResource> resources, IRepositoryWrapper repositoryWrapper)
     {
-        Console.WriteLine($"Persisting {resources.Count} online resources for {identifier}");
+        _logger.LogInformation(
+            "Persisting {ResourceCount} online resources for {Identifier}",
+            resources.Count,
+            identifier);
 
         foreach ( OnlineResource resource in resources )
         {
@@ -35,19 +45,28 @@ public class MetadataResourceService : IMetadataResourceService
                         break;
 
                     case ResourceFunction.Browse:
-                        Console.WriteLine($"Skipping 'Browse' resource for {identifier}: {resource.Url}");
+                        _logger.LogDebug(
+                            "Skipping 'Browse' resource for {Identifier}: {ResourceUrl}",
+                            identifier,
+                            resource.Url);
 
                         break;
 
                     default:
-                        Console.WriteLine($"Unknown resource function {resource.Function} for {identifier}. Skipping.");
+                        _logger.LogWarning(
+                            "Unknown resource function {ResourceFunction} for {Identifier}. Skipping.",
+                            resource.Function,
+                            identifier);
 
                         break;
                 }
             }
             catch ( Exception ex )
             {
-                Console.WriteLine($"Error persisting resource {resource.Url} for {identifier}: {ex.Message}");
+                _logger.LogError(ex,
+                    "Error persisting resource {ResourceUrl} for {Identifier}",
+                    resource.Url,
+                    identifier);
             }
         }
     }

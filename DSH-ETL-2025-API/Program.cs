@@ -1,10 +1,17 @@
-
 using DSH_ETL_2025.Infrastructure.DataAccess;
 using DSH_ETL_2025.Infrastructure.Extension;
 using DSH_ETL_2025.Application.Extension;
 using DSH_ETL_2025_API.Middleware;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

@@ -1,15 +1,18 @@
 using DSH_ETL_2025.Contract.Extractors;
 using DSH_ETL_2025.Domain.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace DSH_ETL_2025.Infrastructure.Extractors;
 
 public class MetadataExtractor : IMetadataExtractor
 {
     private readonly Dictionary<DocumentType, IDocumentFormatExtractor> _extractors;
+    private readonly ILogger<MetadataExtractor> _logger;
 
-    public MetadataExtractor(IEnumerable<IDocumentFormatExtractor> formatExtractors)
+    public MetadataExtractor(IEnumerable<IDocumentFormatExtractor> formatExtractors, ILogger<MetadataExtractor> logger)
     {
         _extractors = formatExtractors.ToDictionary(e => e.SupportedType);
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -30,7 +33,10 @@ public class MetadataExtractor : IMetadataExtractor
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Warning: Failed to extract {extractor.SupportedType} for {identifier}. Error: {ex.Message}");
+                _logger.LogWarning(ex,
+                    "Failed to extract {DocumentType} for {Identifier}",
+                    extractor.SupportedType,
+                    identifier);
             }
         }
 

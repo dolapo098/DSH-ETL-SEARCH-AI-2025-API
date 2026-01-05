@@ -6,6 +6,7 @@ using DSH_ETL_2025.Contract.ResponseDtos;
 using DSH_ETL_2025.Contract.Services;
 using DSH_ETL_2025.Domain.Entities;
 using DSH_ETL_2025.Domain.Enums;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace DSH_ETL_2025.Application.Services;
@@ -16,6 +17,7 @@ public class EtlService : IEtlService
     private readonly Dictionary<DocumentType, IDocumentProcessor> _processors;
     private readonly IRepositoryWrapper _repositoryWrapper;
     private readonly EtlSettings _etlSettings;
+    private readonly ILogger<EtlService> _logger;
     private int _processedCount = 0;
     private int _totalCount = 0;
 
@@ -23,12 +25,14 @@ public class EtlService : IEtlService
         IMetadataExtractor metadataExtractor,
         IEnumerable<IDocumentProcessor> processors,
         IRepositoryWrapper repositoryWrapper,
-        IOptions<EtlSettings> etlSettings)
+        IOptions<EtlSettings> etlSettings,
+        ILogger<EtlService> logger)
     {
         _metadataExtractor = metadataExtractor;
         _processors = processors.ToDictionary(p => p.SupportedType);
         _repositoryWrapper = repositoryWrapper;
         _etlSettings = etlSettings.Value;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -92,7 +96,10 @@ public class EtlService : IEtlService
                         {
                             formatFailures.Add($"{documentEntry.Key}: {ex.Message}");
 
-                            Console.WriteLine($"Warning: Failed to process {documentEntry.Key} for {identifier}. Error: {ex.Message}");
+                            _logger.LogWarning(ex,
+                                "Failed to process {DocumentType} for {Identifier}",
+                                documentEntry.Key,
+                                identifier);
                         }
                     }
                 }
@@ -114,7 +121,9 @@ public class EtlService : IEtlService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error processing {identifier}: {ex.Message}");
+            _logger.LogError(ex,
+                "Error processing {Identifier}",
+                identifier);
 
             return new ProcessResultDto
             {

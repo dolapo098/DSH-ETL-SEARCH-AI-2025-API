@@ -3,6 +3,7 @@ using DSH_ETL_2025.Infrastructure.DataAccess;
 using DSH_ETL_2025.Infrastructure.Repositories;
 using DSH_ETL_2025.UnitTests.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace DSH_ETL_2025.UnitTests.Repositories;
@@ -101,7 +102,8 @@ public class DatasetGeospatialDataRepositoryTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
-        _dbContextMock = new Mock<EtlDbContext>(options) { CallBase = false };
+        Mock<ILogger<EtlDbContext>> loggerMock = new Mock<ILogger<EtlDbContext>>();
+        _dbContextMock = new Mock<EtlDbContext>(options, loggerMock.Object) { CallBase = false };
         _dbContextMock.Setup(c => c.Set<DatasetGeospatialData>()).Returns(_geospatialDataDbSet.Object);
         _dbContextMock.SetupGet(c => c.DatasetGeospatialDatas).Returns(_geospatialDataDbSet.Object);
         _dbContextMock.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
@@ -189,7 +191,7 @@ public class DatasetGeospatialDataRepositoryTests
     }
 
     [TestMethod]
-    public async Task SaveGeospatialDataAsync_ShouldPreserveExisting_WhenNullFieldsProvided()
+    public async Task SaveGeospatialDataAsync_ShouldUpdateWithNulls_WhenNullFieldsProvided()
     {
         // Arrange
         DatasetGeospatialData geospatialData = new DatasetGeospatialData
@@ -211,9 +213,9 @@ public class DatasetGeospatialDataRepositoryTests
 
         Assert.IsNotNull(saved);
 
-        Assert.AreEqual("Test abstract for dataset 1", saved.Abstract);
+        Assert.IsNull(saved.Abstract);
 
-        Assert.IsNotNull(saved.BoundingBox);
+        Assert.IsNull(saved.BoundingBox);
     }
 }
 

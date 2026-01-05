@@ -4,6 +4,7 @@ using DSH_ETL_2025.Contract.Repositories;
 using DSH_ETL_2025.Domain.Entities;
 using DSH_ETL_2025.Domain.Enums;
 using DSH_ETL_2025.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace DSH_ETL_2025.UnitTests.Services;
@@ -12,6 +13,7 @@ namespace DSH_ETL_2025.UnitTests.Services;
 public class MetadataResourceServiceTests
 {
     private Mock<IRepositoryWrapper> _repositoryWrapperMock = null!;
+    private Mock<ILogger<MetadataResourceService>> _loggerMock = null!;
     private MetadataResourceService _resourceService = null!;
     private string _testIdentifier = "test-id";
     private int _testMetadataId = 1;
@@ -20,6 +22,7 @@ public class MetadataResourceServiceTests
     public void TestInitialize()
     {
         _repositoryWrapperMock = new Mock<IRepositoryWrapper>();
+        _loggerMock = new Mock<ILogger<MetadataResourceService>>();
         
         Mock<IDataFileRepository> dataFileRepoMock = new Mock<IDataFileRepository>();
         Mock<ISupportingDocumentRepository> supportingDocRepoMock = new Mock<ISupportingDocumentRepository>();
@@ -27,7 +30,7 @@ public class MetadataResourceServiceTests
         _repositoryWrapperMock.SetupGet(r => r.DataFiles).Returns(dataFileRepoMock.Object);
         _repositoryWrapperMock.SetupGet(r => r.SupportingDocuments).Returns(supportingDocRepoMock.Object);
 
-        _resourceService = new MetadataResourceService();
+        _resourceService = new MetadataResourceService(_loggerMock.Object);
     }
 
     [TestMethod]

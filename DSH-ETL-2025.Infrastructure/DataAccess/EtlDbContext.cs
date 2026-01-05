@@ -1,13 +1,18 @@
 ﻿using DSH_ETL_2025.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Logging;
 
 namespace DSH_ETL_2025.Infrastructure.DataAccess;
 
 public class EtlDbContext : DbContext
 {
-    public EtlDbContext(DbContextOptions<EtlDbContext> options) : base(options)
+    private readonly ILogger<EtlDbContext>? _logger;
+
+    public EtlDbContext(DbContextOptions<EtlDbContext> options, ILogger<EtlDbContext>? logger = null) : base(options)
     {
+        _logger = logger;
+        
         try
         {
             if ( Database != null && Database.IsRelational() )
@@ -19,7 +24,8 @@ public class EtlDbContext : DbContext
         }
         catch ( Exception ex )
         {
-            Console.WriteLine($"Database initialization notice: {ex.Message}");
+            _logger?.LogInformation(ex,
+                "Database initialization notice");
         }
     }
 

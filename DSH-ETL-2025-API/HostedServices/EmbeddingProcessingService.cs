@@ -3,23 +3,26 @@ using DSH_ETL_2025.Contract.Services;
 using DSH_ETL_2025.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace DSH_ETL_2025_API.HostedServices;
 
 public class EmbeddingProcessingService : BackgroundService
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly ILogger<EmbeddingProcessingService> _logger;
     private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(30);
 
-    public EmbeddingProcessingService(IServiceProvider serviceProvider)
+    public EmbeddingProcessingService(IServiceScopeFactory serviceScopeFactory, ILogger<EmbeddingProcessingService> logger)
     {
-        _serviceProvider = serviceProvider;
+        _serviceScopeFactory = serviceScopeFactory;
+        _logger = logger;
     }
 
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        Console.WriteLine("EmbeddingProcessingService started.");
+        _logger.LogInformation("EmbeddingProcessingService started.");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -29,18 +32,19 @@ public class EmbeddingProcessingService : BackgroundService
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in embedding processing cycle: {ex.Message}");
+                _logger.LogError(ex,
+                    "Error in embedding processing cycle");
             }
 
             await Task.Delay(_pollInterval, stoppingToken);
         }
 
-        Console.WriteLine("EmbeddingProcessingService is stopping.");
+        _logger.LogInformation("EmbeddingProcessingService is stopping.");
     }
 
     private async Task ProcessPendingQueueItemsAsync(CancellationToken cancellationToken)
     {
-        using IServiceScope scope = _serviceProvider.CreateScope();
+        using IServiceScope scope = _serviceScopeFactory.CreateScope();
         IRepositoryWrapper repositoryWrapper = scope.ServiceProvider.GetRequiredService<IRepositoryWrapper>();
         IEmbeddingService embeddingService = scope.ServiceProvider.GetRequiredService<IEmbeddingService>();
 
@@ -51,7 +55,9 @@ public class EmbeddingProcessingService : BackgroundService
             return;
         }
 
-        Console.WriteLine($"Found {pendingItems.Count} datasets pending embedding processing.");
+        _logger.LogInformation(
+            "Found {PendingCount} datasets pending embedding processing.",
+            pendingItems.Count);
 
         foreach (DatasetSupportingDocumentQueue item in pendingItems)
         {
@@ -62,15 +68,21 @@ public class EmbeddingProcessingService : BackgroundService
 
             try
             {
-                Console.WriteLine($"Triggering heavy lifting for DatasetMetadataID: {item.DatasetMetadataID}");
+                _logger.LogDebug(
+                    "Triggering heavy lifting for DatasetMetadataID: {DatasetMetadataID}",
+                    item.DatasetMetadataID);
 
                 await embeddingService.ProcessDatasetAsync(item.DatasetMetadataID);
 
-                Console.WriteLine($"Successfully triggered processing for DatasetMetadataID: {item.DatasetMetadataID}");
+                _logger.LogInformation(
+                    "Successfully triggered processing for DatasetMetadataID: {DatasetMetadataID}",
+                    item.DatasetMetadataID);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: Failed to trigger processing for DatasetMetadataID {item.DatasetMetadataID}: {ex.Message}");
+                _logger.LogError(ex,
+                    "Failed to trigger processing for DatasetMetadataID {DatasetMetadataID}",
+                    item.DatasetMetadataID);
             }
         }
     }

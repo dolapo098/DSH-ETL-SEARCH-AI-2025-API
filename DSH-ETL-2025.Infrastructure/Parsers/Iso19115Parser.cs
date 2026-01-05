@@ -5,11 +5,18 @@ using System.Xml.Linq;
 using System.Xml.XPath;
 using DSH_ETL_2025.Contract.Parsers;
 using DSH_ETL_2025.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 
 namespace DSH_ETL_2025.Infrastructure.Parsers;
 
 public class Iso19115Parser : IIso19115Parser
 {
+    private readonly ILogger<Iso19115Parser> _logger;
+
+    public Iso19115Parser(ILogger<Iso19115Parser> logger)
+    {
+        _logger = logger;
+    }
     // ISO 19139 (2005) namespaces
     private const string GmdNamespace = "http://www.isotc211.org/2005/gmd";
     private const string GcoNamespace = "http://www.isotc211.org/2005/gco";
@@ -49,7 +56,8 @@ public class Iso19115Parser : IIso19115Parser
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Warning: Failed to extract bounding box from XML. Error: {ex.Message}");
+            _logger.LogWarning(ex,
+                "Failed to extract bounding box from XML");
 
             return null;
         }
@@ -89,7 +97,8 @@ public class Iso19115Parser : IIso19115Parser
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Warning: Failed to extract temporal extent from XML. Error: {ex.Message}");
+            _logger.LogWarning(ex,
+                "Failed to extract temporal extent from XML");
 
             return null;
         }
@@ -154,7 +163,8 @@ public class Iso19115Parser : IIso19115Parser
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Warning: Error extracting ISO 19115 fields. Error: {ex.Message}");
+            _logger.LogWarning(ex,
+                "Error extracting ISO 19115 fields");
         }
 
         return fields;
@@ -336,13 +346,15 @@ public class Iso19115Parser : IIso19115Parser
         }
         catch (XmlException ex)
         {
-            Console.WriteLine($"XML parsing error: {ex.Message}");
+            _logger.LogWarning(ex,
+                "XML parsing error");
 
             return null;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Unexpected error parsing XML: {ex.Message}");
+            _logger.LogWarning(ex,
+                "Unexpected error parsing XML");
 
             return null;
         }

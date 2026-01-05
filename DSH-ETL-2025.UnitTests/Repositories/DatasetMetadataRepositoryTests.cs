@@ -3,6 +3,7 @@ using DSH_ETL_2025.Infrastructure.DataAccess;
 using DSH_ETL_2025.Infrastructure.Repositories;
 using DSH_ETL_2025.UnitTests.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace DSH_ETL_2025.UnitTests.Repositories;
@@ -88,7 +89,8 @@ public class DatasetMetadataRepositoryTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
-        _dbContextMock = new Mock<EtlDbContext>(options) { CallBase = false };
+        Mock<ILogger<EtlDbContext>> loggerMock = new Mock<ILogger<EtlDbContext>>();
+        _dbContextMock = new Mock<EtlDbContext>(options, loggerMock.Object) { CallBase = false };
         _dbContextMock.Setup(c => c.Set<DatasetMetadata>()).Returns(_datasetMetadataDbSet.Object);
         _dbContextMock.SetupGet(c => c.DatasetMetadatas).Returns(_datasetMetadataDbSet.Object);
         _dbContextMock.SetupGet(c => c.DatasetSupportingDocumentQueues).Returns(_queueDbSet.Object);

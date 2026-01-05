@@ -4,6 +4,7 @@ using DSH_ETL_2025.Infrastructure.DataAccess;
 using DSH_ETL_2025.Infrastructure.Repositories;
 using DSH_ETL_2025.UnitTests.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace DSH_ETL_2025.UnitTests.Repositories;
@@ -82,7 +83,8 @@ public class MetadataRepositoryTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
-        _dbContextMock = new Mock<EtlDbContext>(options) { CallBase = false };
+        Mock<ILogger<EtlDbContext>> loggerMock = new Mock<ILogger<EtlDbContext>>();
+        _dbContextMock = new Mock<EtlDbContext>(options, loggerMock.Object) { CallBase = false };
         _dbContextMock.Setup(c => c.Set<MetadataDocument>()).Returns(_metadataDocumentDbSet.Object);
         _dbContextMock.SetupGet(c => c.MetadataDocuments).Returns(_metadataDocumentDbSet.Object);
         _dbContextMock.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
