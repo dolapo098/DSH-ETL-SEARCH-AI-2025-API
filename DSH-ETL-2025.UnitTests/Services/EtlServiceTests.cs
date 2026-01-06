@@ -5,10 +5,12 @@ using DSH_ETL_2025.Contract.Extractors;
 using DSH_ETL_2025.Contract.Processors;
 using DSH_ETL_2025.Contract.Repositories;
 using DSH_ETL_2025.Contract.ResponseDtos;
+using DSH_ETL_2025.Contract.Services;
 using DSH_ETL_2025.Domain.Entities;
 using DSH_ETL_2025.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using System.Security.Cryptography;
 using System.Text;
@@ -27,6 +29,9 @@ public class EtlServiceTests
     private Mock<IMetadataRepository> _metadataRepoMock = null!;
     private Mock<IDatasetMetadataRelationshipRepository> _relationshipRepoMock = null!;
     private Mock<IDatasetSupportingDocumentQueueRepository> _queueRepoMock = null!;
+    private Mock<IServiceScopeFactory> _scopeFactoryMock = null!;
+    private Mock<IServiceScope> _scopeMock = null!;
+    private Mock<IServiceProvider> _serviceProviderMock = null!;
     private EtlService _etlService = null!;
     private string _testIdentifier = "test-id";
     private string _testFilePath = $"test-identifiers-{Guid.NewGuid()}.txt";
@@ -43,6 +48,12 @@ public class EtlServiceTests
         _metadataRepoMock = new Mock<IMetadataRepository>();
         _relationshipRepoMock = new Mock<IDatasetMetadataRelationshipRepository>();
         _queueRepoMock = new Mock<IDatasetSupportingDocumentQueueRepository>();
+        _scopeFactoryMock = new Mock<IServiceScopeFactory>();
+        _scopeMock = new Mock<IServiceScope>();
+        _serviceProviderMock = new Mock<IServiceProvider>();
+
+        _scopeFactoryMock.Setup(x => x.CreateScope()).Returns(_scopeMock.Object);
+        _scopeMock.Setup(x => x.ServiceProvider).Returns(_serviceProviderMock.Object);
 
         _repositoryWrapperMock.SetupGet(r => r.DatasetMetadata).Returns(_datasetMetadataRepoMock.Object);
         _repositoryWrapperMock.SetupGet(r => r.Metadata).Returns(_metadataRepoMock.Object);
@@ -61,7 +72,10 @@ public class EtlServiceTests
             new[] { _jsonProcessorMock.Object },
             _repositoryWrapperMock.Object,
             _etlSettingsMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _scopeFactoryMock.Object);
+
+        _serviceProviderMock.Setup(x => x.GetService(typeof(IEtlService))).Returns(_etlService);
 
         if (File.Exists(_testFilePath))
         {
@@ -86,13 +100,13 @@ public class EtlServiceTests
 
     private void SetupSuccessfulExtraction()
     {
-        _metadataExtractorMock.Setup(e => e.ExtractAllFormatsAsync(_testIdentifier))
+        _metadataExtractorMock.Setup(e => e.ExtractAllFormatsAsync(_testIdentifier, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<DocumentType, string> { { DocumentType.Json, "{}" } });
     }
 
     private void SetupFailedExtraction()
     {
-        _metadataExtractorMock.Setup(e => e.ExtractAllFormatsAsync(_testIdentifier))
+        _metadataExtractorMock.Setup(e => e.ExtractAllFormatsAsync(_testIdentifier, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("Test error"));
     }
 
@@ -209,7 +223,7 @@ public class EtlServiceTests
 
     private void SetupFailedFormatProcessing()
     {
-        _jsonProcessorMock.Setup(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, It.IsAny<IRepositoryWrapper>()))
+        _jsonProcessorMock.Setup(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, It.IsAny<IRepositoryWrapper>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("Processing failed"));
     }
 
@@ -225,19 +239,19 @@ public class EtlServiceTests
     public async Task ProcessDatasetAsync_ShouldReturnSuccess_WhenProcessingSucceeds()
     {
         // Act
-        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier, CancellationToken.None);
 
         // Assert
         Assert.IsTrue(result.IsSuccess, $"Process failed with error: {result.Error}");
 
-        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object), Times.Once());
+        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object, It.IsAny<CancellationToken>()), Times.Once());
     }
 
     [TestMethod]
     public async Task ProcessDatasetAsync_ShouldReturnFailure_WhenIdentifierIsInvalid()
     {
         // Act
-        ProcessResultDto result = await _etlService.ProcessDatasetAsync("invalid-id");
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync("invalid-id", CancellationToken.None);
 
         // Assert
         Assert.IsFalse(result.IsSuccess);
@@ -251,7 +265,7 @@ public class EtlServiceTests
         SetupFailedExtraction();
 
         // Act
-        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier, CancellationToken.None);
 
         // Assert
         Assert.IsFalse(result.IsSuccess);
@@ -273,7 +287,7 @@ public class EtlServiceTests
         SetupFailedFormatProcessing();
 
         // Act
-        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier, CancellationToken.None);
 
         // Assert
         _loggerMock.Verify(
@@ -293,15 +307,15 @@ public class EtlServiceTests
         SetupFullyProcessedDataset();
 
         // Act
-        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier, CancellationToken.None);
 
         // Assert
         Assert.IsTrue(result.IsSuccess);
         Assert.IsTrue(result.Message.Contains("already fully processed"));
         Assert.IsTrue(result.Message.Contains("Skipped"));
 
-        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier), Times.Once);
-        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, It.IsAny<IRepositoryWrapper>()), Times.Never);
+        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier, It.IsAny<CancellationToken>()), Times.Once);
+        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, It.IsAny<IRepositoryWrapper>(), It.IsAny<CancellationToken>()), Times.Never);
 
         _loggerMock.Verify(
             x => x.Log(
@@ -320,11 +334,11 @@ public class EtlServiceTests
         SetupSuccessfulMetadataRetrieval();
 
         // Act
-        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier, CancellationToken.None);
 
         // Assert
-        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier), Times.Once);
-        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object), Times.Once);
+        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier, It.IsAny<CancellationToken>()), Times.Once);
+        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
@@ -334,11 +348,11 @@ public class EtlServiceTests
         SetupPartiallyProcessedDataset();
 
         // Act
-        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier, CancellationToken.None);
 
         // Assert
-        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier), Times.Once);
-        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object), Times.Once);
+        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier, It.IsAny<CancellationToken>()), Times.Once);
+        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
@@ -348,11 +362,11 @@ public class EtlServiceTests
         SetupIncompleteMetadata();
 
         // Act
-        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier, CancellationToken.None);
 
         // Assert
-        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier), Times.Once);
-        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object), Times.Once);
+        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier, It.IsAny<CancellationToken>()), Times.Once);
+        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
@@ -362,10 +376,10 @@ public class EtlServiceTests
         SetupMetadataWithoutQueue();
 
         // Act
-        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier);
+        ProcessResultDto result = await _etlService.ProcessDatasetAsync(_testIdentifier, CancellationToken.None);
 
         // Assert
-        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier), Times.Once);
-        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object), Times.Once);
+        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier, It.IsAny<CancellationToken>()), Times.Once);
+        _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

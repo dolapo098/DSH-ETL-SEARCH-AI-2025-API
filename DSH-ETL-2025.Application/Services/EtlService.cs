@@ -8,8 +8,11 @@ using DSH_ETL_2025.Domain.Entities;
 using DSH_ETL_2025.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Collections.Concurrent;
+using System.Threading;
 
 namespace DSH_ETL_2025.Application.Services;
 
@@ -20,25 +23,28 @@ public class EtlService : IEtlService
     private readonly IRepositoryWrapper _repositoryWrapper;
     private readonly EtlSettings _etlSettings;
     private readonly ILogger<EtlService> _logger;
-    private int _processedCount = 0;
-    private int _totalCount = 0;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private static int _processedCount = 0;
+    private static int _totalCount = 0;
 
     public EtlService(
         IMetadataExtractor metadataExtractor,
         IEnumerable<IDocumentProcessor> processors,
         IRepositoryWrapper repositoryWrapper,
         IOptions<EtlSettings> etlSettings,
-        ILogger<EtlService> logger)
+        ILogger<EtlService> logger,
+        IServiceScopeFactory scopeFactory)
     {
         _metadataExtractor = metadataExtractor;
         _processors = processors.ToDictionary(p => p.SupportedType);
         _repositoryWrapper = repositoryWrapper;
         _etlSettings = etlSettings.Value;
         _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
     /// <inheritdoc />
-    public async Task<ProcessResultDto> ProcessDatasetAsync(string identifier)
+    public async Task<ProcessResultDto> ProcessDatasetAsync(string identifier, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -52,7 +58,7 @@ public class EtlService : IEtlService
                 };
             }
 
-            Dictionary<DocumentType, string> extractedDocumentsByFormat = await _metadataExtractor.ExtractAllFormatsAsync(identifier);
+            Dictionary<DocumentType, string> extractedDocumentsByFormat = await _metadataExtractor.ExtractAllFormatsAsync(identifier, cancellationToken);
 
             if (extractedDocumentsByFormat.Count == 0)
             {
@@ -134,7 +140,7 @@ public class EtlService : IEtlService
                         {
                             try
                             {
-                                await processor.ProcessAsync(documentEntry.Value, identifier, _repositoryWrapper);
+                                await processor.ProcessAsync(documentEntry.Value, identifier, _repositoryWrapper, cancellationToken);
                                 formatSuccesses.Add(documentEntry.Key.ToString());
                             }
                             catch (Exception ex)
@@ -181,7 +187,7 @@ public class EtlService : IEtlService
 
             if (isSuccess)
             {
-                _processedCount++;
+                Interlocked.Increment(ref _processedCount);
             }
 
             return BuildProcessResultDto(identifier, successCount, failureCount, totalFormats, formatFailures);
@@ -202,7 +208,7 @@ public class EtlService : IEtlService
     }
 
     /// <inheritdoc />
-    public async Task<ProcessResultDto> ProcessAllDatasetsAsync()
+    public async Task<ProcessResultDto> ProcessAllDatasetsAsync(CancellationToken cancellationToken = default)
     {
         string identifiersFilePath = _etlSettings.MetadataIdentifiersFilePath;
 
@@ -211,37 +217,58 @@ public class EtlService : IEtlService
             throw new FileNotFoundException($"Metadata identifiers file not found: {identifiersFilePath}");
         }
 
-        string[] identifiers = await File.ReadAllLinesAsync(identifiersFilePath);
+        string[] identifiers = await File.ReadAllLinesAsync(identifiersFilePath, cancellationToken);
         _totalCount = identifiers.Length;
         _processedCount = 0;
 
-        List<string> failedIdentifiers = new List<string>();
+        ConcurrentBag<string> failedIdentifiers = new ConcurrentBag<string>();
         int skippedCount = 0;
 
-        foreach (string identifier in identifiers)
+        ParallelOptions parallelOptions = new ParallelOptions
         {
-            if (!string.IsNullOrWhiteSpace(identifier))
+            MaxDegreeOfParallelism = _etlSettings.MaxDegreeOfParallelism > 0 
+                ? _etlSettings.MaxDegreeOfParallelism 
+                : 5,
+            CancellationToken = cancellationToken
+        };
+
+        await Parallel.ForEachAsync(identifiers, parallelOptions, async (identifier, ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(identifier)) return;
+
+            string trimmed = identifier.Trim();
+
+            try
             {
-                ProcessResultDto result = await ProcessDatasetAsync(identifier.Trim());
+                // Create a new scope for each dataset to ensure thread-safety for database context
+                using IServiceScope scope = _scopeFactory.CreateScope();
+                IEtlService scopedEtlService = scope.ServiceProvider.GetRequiredService<IEtlService>();
+
+                ProcessResultDto result = await scopedEtlService.ProcessDatasetAsync(trimmed, ct);
 
                 if (result.IsSuccess && result.Message.Contains("already fully processed"))
                 {
-                    skippedCount++;
+                    Interlocked.Increment(ref skippedCount);
                 }
                 else if (!result.IsSuccess)
                 {
-                    failedIdentifiers.Add(identifier.Trim());
+                    failedIdentifiers.Add(trimmed);
                 }
             }
-        }
+            catch (Exception ex)
+            {
+                failedIdentifiers.Add(trimmed);
+                _logger.LogError(ex, "Unexpected error processing {Identifier} in parallel loop", trimmed);
+            }
+        });
 
-        string message = failedIdentifiers.Count == 0
+        string message = failedIdentifiers.IsEmpty
             ? $"All {_processedCount} datasets processed successfully. {skippedCount} skipped (already processed)."
             : $"Processed {_processedCount} of {_totalCount} datasets. {failedIdentifiers.Count} failed. {skippedCount} skipped (already processed).";
 
         return new ProcessResultDto
         {
-            IsSuccess = failedIdentifiers.Count == 0,
+            IsSuccess = failedIdentifiers.IsEmpty,
             Message = message,
             FilePath = identifiersFilePath
         };

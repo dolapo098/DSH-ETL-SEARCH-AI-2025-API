@@ -22,7 +22,7 @@ public class JsonDocumentProcessor : IDocumentProcessor
     public DocumentType SupportedType => DocumentType.Json;
 
     /// <inheritdoc />
-    public async Task<DatasetMetadata?> ProcessAsync(string content, string identifier, IRepositoryWrapper repositoryWrapper)
+    public async Task<DatasetMetadata?> ProcessAsync(string content, string identifier, IRepositoryWrapper repositoryWrapper, CancellationToken cancellationToken = default)
     {
         DatasetMetadata? existingMetadata = await repositoryWrapper.DatasetMetadata.GetMetadataAsync(identifier);
 

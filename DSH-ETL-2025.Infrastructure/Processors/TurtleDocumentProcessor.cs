@@ -11,7 +11,7 @@ public class TurtleDocumentProcessor : IDocumentProcessor
     public DocumentType SupportedType => DocumentType.Turtle;
 
     /// <inheritdoc />
-    public async Task<DatasetMetadata?> ProcessAsync(string content, string identifier, IRepositoryWrapper repositoryWrapper)
+    public async Task<DatasetMetadata?> ProcessAsync(string content, string identifier, IRepositoryWrapper repositoryWrapper, CancellationToken cancellationToken = default)
     {
         // Currently used for raw document storage.
         // Logic for extraction of semantic properties from Turtle can be added here.

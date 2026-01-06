@@ -25,10 +25,10 @@ public class EtlControllerTests
     {
         // Arrange
         ProcessResultDto expectedResult = new ProcessResultDto { IsSuccess = true, Message = "Success" };
-        _etlServiceMock.Setup(s => s.ProcessDatasetAsync(_testIdentifier)).ReturnsAsync(expectedResult);
+        _etlServiceMock.Setup(s => s.ProcessDatasetAsync(_testIdentifier, It.IsAny<CancellationToken>())).ReturnsAsync(expectedResult);
 
         // Act
-        ProcessResultDto result = await _controller.ProcessDataset(_testIdentifier);
+        ProcessResultDto result = await _controller.ProcessDataset(_testIdentifier, CancellationToken.None);
 
         // Assert
         Assert.AreEqual(expectedResult, result);
@@ -48,4 +48,3 @@ public class EtlControllerTests
         Assert.AreEqual(expectedStatus, result);
     }
 }
-

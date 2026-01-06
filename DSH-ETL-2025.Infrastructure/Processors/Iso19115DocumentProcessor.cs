@@ -22,7 +22,7 @@ public class Iso19115DocumentProcessor : IDocumentProcessor
     public DocumentType SupportedType => DocumentType.Iso19115;
 
     /// <inheritdoc />
-    public async Task<DatasetMetadata?> ProcessAsync(string content, string identifier, IRepositoryWrapper repositoryWrapper)
+    public async Task<DatasetMetadata?> ProcessAsync(string content, string identifier, IRepositoryWrapper repositoryWrapper, CancellationToken cancellationToken = default)
     {
         DatasetMetadata? datasetMetadata = await repositoryWrapper.DatasetMetadata.GetMetadataAsync(identifier);
 

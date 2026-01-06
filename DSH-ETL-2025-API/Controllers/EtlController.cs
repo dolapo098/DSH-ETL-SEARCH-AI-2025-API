@@ -1,6 +1,7 @@
 using DSH_ETL_2025.Contract.ResponseDtos;
 using DSH_ETL_2025.Contract.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading;
 
 namespace DSH_ETL_2025_API.Controllers;
 
@@ -16,15 +17,15 @@ public class EtlController : ControllerBase
     }
 
     [HttpPost("process/{identifier}")]
-    public async Task<ProcessResultDto> ProcessDataset(string identifier)
+    public async Task<ProcessResultDto> ProcessDataset(string identifier, CancellationToken cancellationToken)
     {
-        return await _etlService.ProcessDatasetAsync(identifier);
+        return await _etlService.ProcessDatasetAsync(identifier, cancellationToken);
     }
 
     [HttpPost("process-all")]
-    public async Task<ProcessResultDto> ProcessAllDatasets()
+    public async Task<ProcessResultDto> ProcessAllDatasets(CancellationToken cancellationToken)
     {
-        return await _etlService.ProcessAllDatasetsAsync();
+        return await _etlService.ProcessAllDatasetsAsync(cancellationToken);
     }
 
     [HttpGet("status")]
@@ -33,4 +34,3 @@ public class EtlController : ControllerBase
         return await _etlService.GetStatusAsync();
     }
 }
-

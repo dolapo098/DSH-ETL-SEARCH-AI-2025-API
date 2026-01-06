@@ -1,5 +1,6 @@
 using DSH_ETL_2025.Contract.Extractors;
 using DSH_ETL_2025.Domain.Enums;
+using System.Threading;
 
 namespace DSH_ETL_2025.Infrastructure.Extractors;
 
@@ -29,11 +30,10 @@ public abstract class BaseDocumentFormatExtractor : IDocumentFormatExtractor
     }
 
     /// <inheritdoc />
-    public virtual async Task<string> ExtractAsync(string identifier)
+    public virtual async Task<string> ExtractAsync(string identifier, CancellationToken cancellationToken = default)
     {
         string url = BuildUrl(identifier);
 
-        return await HttpClient.GetStringAsync(url);
+        return await HttpClient.GetStringAsync(url, cancellationToken);
     }
 }
-

@@ -1,4 +1,5 @@
 using DSH_ETL_2025.Domain.Enums;
+using System.Threading;
 
 namespace DSH_ETL_2025.Contract.Extractors;
 
@@ -16,8 +17,9 @@ public interface IDocumentFormatExtractor
     /// Extracts document content for a given identifier asynchronously.
     /// </summary>
     /// <param name="identifier">The identifier of the dataset.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the extracted document content.</returns>
-    Task<string> ExtractAsync(string identifier);
+    Task<string> ExtractAsync(string identifier, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Builds the URL for accessing a document with the given identifier.
@@ -26,4 +28,3 @@ public interface IDocumentFormatExtractor
     /// <returns>The constructed URL string.</returns>
     string BuildUrl(string identifier);
 }
-

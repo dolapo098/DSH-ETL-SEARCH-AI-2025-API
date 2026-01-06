@@ -81,13 +81,13 @@ public class EmbeddingProcessingServiceTests
 
     private void SetupSuccessfulProcessing()
     {
-        _embeddingServiceMock.Setup(e => e.ProcessDatasetAsync(It.IsAny<int>()))
+        _embeddingServiceMock.Setup(e => e.ProcessDatasetAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
     }
 
     private void SetupFailedProcessing()
     {
-        _embeddingServiceMock.Setup(e => e.ProcessDatasetAsync(It.IsAny<int>()))
+        _embeddingServiceMock.Setup(e => e.ProcessDatasetAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("Processing failed"));
     }
 
@@ -189,4 +189,3 @@ public class EmbeddingProcessingServiceTests
             Times.AtLeastOnce);
     }
 }
-

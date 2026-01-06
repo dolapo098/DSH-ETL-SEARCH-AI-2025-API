@@ -72,7 +72,7 @@ public class EmbeddingProcessingService : BackgroundService
                     "Triggering heavy lifting for DatasetMetadataID: {DatasetMetadataID}",
                     item.DatasetMetadataID);
 
-                await embeddingService.ProcessDatasetAsync(item.DatasetMetadataID);
+                await embeddingService.ProcessDatasetAsync(item.DatasetMetadataID, cancellationToken);
 
                 _logger.LogInformation(
                     "Successfully triggered processing for DatasetMetadataID: {DatasetMetadataID}",

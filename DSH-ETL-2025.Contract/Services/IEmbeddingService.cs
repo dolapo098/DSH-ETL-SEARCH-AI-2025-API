@@ -1,3 +1,5 @@
+using System.Threading;
+
 namespace DSH_ETL_2025.Contract.Services;
 
 /// <summary>
@@ -9,7 +11,7 @@ public interface IEmbeddingService
     /// Processes a dataset for embedding generation asynchronously.
     /// </summary>
     /// <param name="datasetMetadataID">The ID of the dataset metadata to process.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    Task ProcessDatasetAsync(int datasetMetadataID);
+    Task ProcessDatasetAsync(int datasetMetadataID, CancellationToken cancellationToken = default);
 }
-

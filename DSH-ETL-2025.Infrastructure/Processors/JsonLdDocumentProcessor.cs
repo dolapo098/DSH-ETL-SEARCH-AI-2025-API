@@ -11,7 +11,7 @@ public class JsonLdDocumentProcessor : IDocumentProcessor
     public DocumentType SupportedType => DocumentType.JsonLd;
 
     /// <inheritdoc />
-    public async Task<DatasetMetadata?> ProcessAsync(string content, string identifier, IRepositoryWrapper repositoryWrapper)
+    public async Task<DatasetMetadata?> ProcessAsync(string content, string identifier, IRepositoryWrapper repositoryWrapper, CancellationToken cancellationToken = default)
     {
         // Currently used for raw document storage. 
         // Logic for extraction of semantic properties from JSON-LD can be added here.

@@ -1,6 +1,7 @@
 using DSH_ETL_2025.Contract.Extractors;
 using DSH_ETL_2025.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using System.Threading;
 
 namespace DSH_ETL_2025.Infrastructure.Extractors;
 
@@ -16,7 +17,7 @@ public class MetadataExtractor : IMetadataExtractor
     }
 
     /// <inheritdoc />
-    public async Task<Dictionary<DocumentType, string>> ExtractAllFormatsAsync(string identifier)
+    public async Task<Dictionary<DocumentType, string>> ExtractAllFormatsAsync(string identifier, CancellationToken cancellationToken = default)
     {
         Dictionary<DocumentType, string> results = new Dictionary<DocumentType, string>();
 
@@ -24,7 +25,7 @@ public class MetadataExtractor : IMetadataExtractor
         {
             try
             {
-                string content = await extractor.ExtractAsync(identifier);
+                string content = await extractor.ExtractAsync(identifier, cancellationToken);
 
                 if (!string.IsNullOrWhiteSpace(content))
                 {
@@ -43,4 +44,3 @@ public class MetadataExtractor : IMetadataExtractor
         return results;
     }
 }
-

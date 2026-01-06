@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Threading;
 
 namespace DSH_ETL_2025.Application.Services;
 
@@ -29,7 +30,7 @@ public class EmbeddingService : IEmbeddingService
     }
 
     /// <inheritdoc />
-    public async Task ProcessDatasetAsync(int datasetMetadataID)
+    public async Task ProcessDatasetAsync(int datasetMetadataID, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -38,7 +39,7 @@ public class EmbeddingService : IEmbeddingService
                 DatasetMetadataID = datasetMetadataID
             };
 
-            HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/embeddings/process-dataset", request, _jsonOptions);
+            HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/embeddings/process-dataset", request, _jsonOptions, cancellationToken);
 
             response.EnsureSuccessStatusCode();
         }
@@ -52,4 +53,3 @@ public class EmbeddingService : IEmbeddingService
         }
     }
 }
-

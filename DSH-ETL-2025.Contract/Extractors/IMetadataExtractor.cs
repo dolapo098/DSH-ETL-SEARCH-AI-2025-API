@@ -1,4 +1,5 @@
 using DSH_ETL_2025.Domain.Enums;
+using System.Threading;
 
 namespace DSH_ETL_2025.Contract.Extractors;
 
@@ -11,7 +12,7 @@ public interface IMetadataExtractor
     /// Extracts all available metadata formats for a given identifier asynchronously.
     /// </summary>
     /// <param name="identifier">The identifier of the dataset.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A dictionary mapping document types to their extracted content.</returns>
-    Task<Dictionary<DocumentType, string>> ExtractAllFormatsAsync(string identifier);
+    Task<Dictionary<DocumentType, string>> ExtractAllFormatsAsync(string identifier, CancellationToken cancellationToken = default);
 }
-
