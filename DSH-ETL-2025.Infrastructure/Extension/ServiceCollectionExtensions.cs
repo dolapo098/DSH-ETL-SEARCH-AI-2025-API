@@ -23,9 +23,8 @@ namespace DSH_ETL_2025.Infrastructure.Extension
             services.Configure<EtlSettings>(config.GetSection(EtlSettings.SectionName));
 
             services.AddDbContext<EtlDbContext>(options =>
-                options.UseSqlite(config.GetConnectionString("DefaultConnection")
-                    ?? "Data Source=etl_database.db"));
-
+                options.UseSqlite(config.GetConnectionString("DefaultConnection")));
+            
             services.AddScoped<IDatasetMetadataRepository, DatasetMetadataRepository>();
 
             services.AddScoped<IMetadataRepository, MetadataRepository>();

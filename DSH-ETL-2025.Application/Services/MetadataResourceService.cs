@@ -79,7 +79,7 @@ public class MetadataResourceService : IMetadataResourceService
             FileIdentifier = identifier,
             Title = resource.Name,
             Description = resource.Description,
-            Type = resource.Type,
+            Type = resource.Function.ToString().ToLower(),
             DownloadUrl = resource.Url,
             FileType = resource.Function == ResourceFunction.FileAccess ? "WAF" : "ZIP",
             CreatedAt = DateTime.UtcNow
@@ -96,7 +96,7 @@ public class MetadataResourceService : IMetadataResourceService
             FileIdentifier = identifier,
             Title = resource.Name,
             Description = resource.Description,
-            Type = resource.Type,
+            Type = "information",
             DownloadUrl = resource.Url,
             DocumentType = "ZIP",
             CreatedAt = DateTime.UtcNow
