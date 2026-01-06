@@ -16,5 +16,14 @@ public interface IMetadataRepository : IBaseRepository<MetadataDocument>
     /// <param name="datasetMetadataID">The dataset metadata ID.</param>
     /// <param name="document">The document content.</param>
     /// <param name="type">The document type.</param>
-    Task SaveDocumentAsync(string identifier, int datasetMetadataID, string document, DocumentType type);
+    /// <param name="contentHash">The hash of the document content.</param>
+    Task SaveDocumentAsync(string identifier, int datasetMetadataID, string document, DocumentType type, string contentHash);
+
+    /// <summary>
+    /// Gets a metadata document by identifier and type.
+    /// </summary>
+    /// <param name="identifier">The file identifier.</param>
+    /// <param name="type">The document type.</param>
+    /// <returns>The metadata document if found; otherwise, null.</returns>
+    Task<MetadataDocument?> GetDocumentAsync(string identifier, DocumentType type);
 }

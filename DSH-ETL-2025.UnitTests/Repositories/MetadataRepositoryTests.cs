@@ -40,6 +40,7 @@ public class MetadataRepositoryTests
                 FileIdentifier = "test-identifier-1",
                 DocumentType = DocumentType.Json,
                 RawDocument = "{\"title\":\"Test Dataset 1\",\"abstract\":\"Test Abstract 1\"}",
+                ContentHash = "hash1",
                 CreatedAt = DateTime.UtcNow.AddDays(-2)
             },
             new MetadataDocument
@@ -49,6 +50,7 @@ public class MetadataRepositoryTests
                 FileIdentifier = "test-identifier-1",
                 DocumentType = DocumentType.Iso19115,
                 RawDocument = "<gmd:MD_Metadata>...</gmd:MD_Metadata>",
+                ContentHash = "hash2",
                 CreatedAt = DateTime.UtcNow.AddDays(-2)
             },
             new MetadataDocument
@@ -58,6 +60,7 @@ public class MetadataRepositoryTests
                 FileIdentifier = "test-identifier-2",
                 DocumentType = DocumentType.Json,
                 RawDocument = "{\"title\":\"Test Dataset 2\",\"abstract\":\"Test Abstract 2\"}",
+                ContentHash = "hash3",
                 CreatedAt = DateTime.UtcNow.AddDays(-1)
             },
             new MetadataDocument
@@ -67,6 +70,7 @@ public class MetadataRepositoryTests
                 FileIdentifier = "test-identifier-3",
                 DocumentType = DocumentType.JsonLd,
                 RawDocument = "{\"@context\":\"https://schema.org/\",\"@type\":\"Dataset\",\"name\":\"Test Dataset 3\"}",
+                ContentHash = "hash4",
                 CreatedAt = DateTime.UtcNow
             }
         };
@@ -112,9 +116,10 @@ public class MetadataRepositoryTests
         int datasetMetadataID = 4;
         string document = "{\"title\":\"New Document\"}";
         DocumentType documentType = DocumentType.Iso19115;
+        string hash = "newhash";
 
         // Act
-        await _repository.SaveDocumentAsync(identifier, datasetMetadataID, document, documentType);
+        await _repository.SaveDocumentAsync(identifier, datasetMetadataID, document, documentType, hash);
 
         await _dbContextMock.Object.SaveChangesAsync();
 
@@ -130,6 +135,8 @@ public class MetadataRepositoryTests
         Assert.AreEqual(documentType, saved.DocumentType);
 
         Assert.AreEqual(document, saved.RawDocument);
+
+        Assert.AreEqual(hash, saved.ContentHash);
     }
 
     [TestMethod]
@@ -140,9 +147,10 @@ public class MetadataRepositoryTests
         int datasetMetadataID = 1;
         string updatedDocument = "{\"title\":\"Updated Document\"}";
         DocumentType documentType = DocumentType.Json;
+        string hash = "updatedhash";
 
         // Act
-        await _repository.SaveDocumentAsync(identifier, datasetMetadataID, updatedDocument, documentType);
+        await _repository.SaveDocumentAsync(identifier, datasetMetadataID, updatedDocument, documentType, hash);
 
         await _dbContextMock.Object.SaveChangesAsync();
 
@@ -154,6 +162,7 @@ public class MetadataRepositoryTests
         Assert.AreEqual(updatedDocument, saved.RawDocument);
 
         Assert.AreEqual(datasetMetadataID, saved.DatasetMetadataID);
+
+        Assert.AreEqual(hash, saved.ContentHash);
     }
 }
-

@@ -8,6 +8,8 @@ using DSH_ETL_2025.Domain.Entities;
 using DSH_ETL_2025.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace DSH_ETL_2025.Application.Services;
 
@@ -40,21 +42,6 @@ public class EtlService : IEtlService
     {
         try
         {
-            bool isFullyProcessed = await IsDatasetFullyProcessedAsync(identifier);
-            
-            if (isFullyProcessed)
-            {
-                _logger.LogInformation(
-                    "Dataset {Identifier} already fully processed. Skipping.",
-                    identifier);
-                
-                return new ProcessResultDto
-                {
-                    IsSuccess = true,
-                    Message = $"Dataset {identifier} already fully processed. Skipped."
-                };
-            }
-            
             if (!await IsIdentifierValidAsync(identifier))
             {
                 return new ProcessResultDto
@@ -64,9 +51,6 @@ public class EtlService : IEtlService
                     Message = $"Identifier '{identifier}' is not in the list of valid identifiers"
                 };
             }
-
-            List<string> formatFailures = new List<string>();
-            List<string> formatSuccesses = new List<string>();
 
             Dictionary<DocumentType, string> extractedDocumentsByFormat = await _metadataExtractor.ExtractAllFormatsAsync(identifier);
 
@@ -80,42 +64,110 @@ public class EtlService : IEtlService
                 };
             }
 
+            bool anyDocumentChanged = false;
+            Dictionary<DocumentType, string> hashes = new Dictionary<DocumentType, string>();
+            StringBuilder combinedContentBuilder = new StringBuilder();
+
+            // Sort keys to ensure deterministic combined hash
+            var sortedFormats = extractedDocumentsByFormat.OrderBy(x => x.Key).ToList();
+
+            foreach (var entry in sortedFormats)
+            {
+                string currentHash = ComputeHash(entry.Value);
+                hashes[entry.Key] = currentHash;
+                combinedContentBuilder.Append(currentHash);
+
+                MetadataDocument? existingDoc = await _repositoryWrapper.Metadata.GetDocumentAsync(identifier, entry.Key);
+                
+                if (existingDoc == null || existingDoc.ContentHash != currentHash)
+                {
+                    anyDocumentChanged = true;
+                }
+            }
+
+            string combinedHash = ComputeHash(combinedContentBuilder.ToString());
+
+            if (!anyDocumentChanged && await IsDatasetFullyProcessedAsync(identifier, combinedHash))
+            {
+                _logger.LogInformation(
+                    "Dataset {Identifier} content is unchanged and already fully processed. Skipping.",
+                    identifier);
+                
+                return new ProcessResultDto
+                {
+                    IsSuccess = true,
+                    Message = $"Dataset {identifier} already fully processed and unchanged. Skipped."
+                };
+            }
+
+            List<string> formatFailures = new List<string>();
+            List<string> formatSuccesses = new List<string>();
+
             await _repositoryWrapper.ExecuteInTransactionAsync(async () =>
             {
-                DatasetMetadata datasetMetadata = new DatasetMetadata
+                DatasetMetadata? datasetMetadata = await _repositoryWrapper.DatasetMetadata.GetMetadataAsync(identifier);
+                
+                if (datasetMetadata == null)
                 {
-                    FileIdentifier = identifier,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                await _repositoryWrapper.DatasetMetadata.SaveMetadataAsync(datasetMetadata);
-
-                await _repositoryWrapper.SaveAsync();
-
-                foreach (KeyValuePair<DocumentType, string> documentEntry in extractedDocumentsByFormat)
-                {
-                    await _repositoryWrapper.Metadata.SaveDocumentAsync(identifier, datasetMetadata.DatasetMetadataID, documentEntry.Value, documentEntry.Key);
+                    datasetMetadata = new DatasetMetadata
+                    {
+                        FileIdentifier = identifier,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _repositoryWrapper.DatasetMetadata.SaveMetadataAsync(datasetMetadata);
+                    await _repositoryWrapper.SaveAsync();
                 }
 
+                bool documentUpdated = false;
+
                 foreach (KeyValuePair<DocumentType, string> documentEntry in extractedDocumentsByFormat)
                 {
-                    if (_processors.TryGetValue(documentEntry.Key, out IDocumentProcessor? processor))
+                    string currentHash = hashes[documentEntry.Key];
+                    MetadataDocument? existingDoc = await _repositoryWrapper.Metadata.GetDocumentAsync(identifier, documentEntry.Key);
+
+                    if (existingDoc == null || existingDoc.ContentHash != currentHash)
                     {
-                        try
+                        await _repositoryWrapper.Metadata.SaveDocumentAsync(identifier, datasetMetadata.DatasetMetadataID, documentEntry.Value, documentEntry.Key, currentHash);
+                        documentUpdated = true;
+                        
+                        if (_processors.TryGetValue(documentEntry.Key, out IDocumentProcessor? processor))
                         {
-                            await processor.ProcessAsync(documentEntry.Value, identifier, _repositoryWrapper);
-
-                            formatSuccesses.Add(documentEntry.Key.ToString());
+                            try
+                            {
+                                await processor.ProcessAsync(documentEntry.Value, identifier, _repositoryWrapper);
+                                formatSuccesses.Add(documentEntry.Key.ToString());
+                            }
+                            catch (Exception ex)
+                            {
+                                formatFailures.Add($"{documentEntry.Key}: {ex.Message}");
+                                _logger.LogWarning(ex, "Failed to process {DocumentType} for {Identifier}", documentEntry.Key, identifier);
+                            }
                         }
-                        catch (Exception ex)
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Document {DocumentType} for {Identifier} is unchanged.", documentEntry.Key, identifier);
+                        formatSuccesses.Add(documentEntry.Key.ToString() + " (cached)");
+                    }
+                }
+
+                // Update queue once at the end if anything was updated or if job wasn't finished
+                if (documentUpdated || !await IsDatasetFullyProcessedAsync(identifier, combinedHash))
+                {
+                    var queueItem = await _repositoryWrapper.DatasetSupportingDocumentQueues.GetQueueItemByMetadataIdAsync(datasetMetadata.DatasetMetadataID);
+                    if (queueItem != null)
+                    {
+                        // If content changed, we must re-do embeddings
+                        if (documentUpdated)
                         {
-                            formatFailures.Add($"{documentEntry.Key}: {ex.Message}");
-
-                            _logger.LogWarning(ex,
-                                "Failed to process {DocumentType} for {Identifier}",
-                                documentEntry.Key,
-                                identifier);
+                            queueItem.ProcessedTitleForEmbedding = false;
+                            queueItem.ProcessedAbstractForEmbedding = false;
+                            queueItem.ProcessedSupportingDocsForEmbedding = false;
                         }
+                        
+                        queueItem.LastProcessedHash = combinedHash;
+                        queueItem.UpdatedAt = DateTime.UtcNow;
+                        await _repositoryWrapper.DatasetSupportingDocumentQueues.UpdateAsync(queueItem);
                     }
                 }
 
@@ -209,19 +261,11 @@ public class EtlService : IEtlService
         });
     }
 
-    private async Task<bool> IsDatasetFullyProcessedAsync(string identifier)
+    private async Task<bool> IsDatasetFullyProcessedAsync(string identifier, string currentCombinedHash)
     {
         DatasetMetadata? existingMetadata = await _repositoryWrapper.DatasetMetadata.GetMetadataAsync(identifier);
         
         if (existingMetadata == null)
-        {
-            return false;
-        }
-        
-        bool metadataComplete = !string.IsNullOrWhiteSpace(existingMetadata.Title) 
-                               && !string.IsNullOrWhiteSpace(existingMetadata.Description);
-        
-        if (!metadataComplete)
         {
             return false;
         }
@@ -234,8 +278,17 @@ public class EtlService : IEtlService
         {
             return false;
         }
-        
-        return true;
+
+        bool metadataComplete = !string.IsNullOrWhiteSpace(existingMetadata.Title) 
+                               && !string.IsNullOrWhiteSpace(existingMetadata.Description);
+                               
+        bool hashMatches = queueItem.LastProcessedHash == currentCombinedHash;
+
+        return metadataComplete 
+               && hashMatches
+               && queueItem.ProcessedTitleForEmbedding 
+               && queueItem.ProcessedAbstractForEmbedding 
+               && queueItem.ProcessedSupportingDocsForEmbedding;
     }
 
     private async Task<bool> IsIdentifierValidAsync(string identifier)
@@ -274,5 +327,17 @@ public class EtlService : IEtlService
             Error = failureCount > 0 ? string.Join("; ", formatFailures) : null
         };
     }
-}
 
+    private string ComputeHash(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return string.Empty;
+        }
+
+        using var sha256 = SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(input);
+        var hashBytes = sha256.ComputeHash(bytes);
+        return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+    }
+}

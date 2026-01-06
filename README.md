@@ -7,7 +7,17 @@ The **Dataset Ingestion Hub** is the administrative gateway for the ETL (Extract
 # **Requirements**
 - **Runtime**: .NET 8.0 / .NET 9.0
 - **Database**: SQLite (`etl_database.db`)
+- **Unit Testing**: MSTest
 - **Integration**: Requires a connection to the Python Search Service for vector indexing.
+
+# **Software Engineering & Architecture**
+
+The system is built using **Clean Architecture** principles, prioritizing decoupling, testability, and scalability.
+
+### **Design Patterns & Engineering Approach**
+- **Dependency Injection (DI)**: Inversion of Control is the core engineering approach, ensuring that services, repositories, and extractors are loosely coupled and easily swapped or mocked for testing.
+- **Strategy Pattern**: Employed for **Document Processors** and **Metadata Parsers**. This allows the Hub to dynamically select the correct processing logic based on the document type (ISO 19115, JSON, RDF) without modifying the core ETL service.
+- **Generic Repository & Unit of Work (UoW)**: Data access is abstracted through a generic repository pattern. The **Repository Wrapper** acts as a Unit of Work, ensuring that all database operations within a processing cycle are handled within a single transaction for data integrity.
 
 # **Setup**
 
@@ -17,6 +27,18 @@ The Hub utilizes a background worker (`EmbeddingProcessingService`) to monitor a
 
 1. Ensure the `EtlSettings:PythonServiceUrl` in `appsettings.json` is reachable.
 2. The system will automatically initialize the SQLite database on first launch.
+
+# **Database & Storage**
+
+The database and logging system share the same space at the root of the solution, ensuring a centralized location for persistence and audit trails.
+
+- **Relational Database (SQLite)**: 
+  - **File Name**: `etl_database.db`
+  - **Physical Location**: Accessible within the same directory as the project folder (at the root of the solution).
+
+- **System Logs**:
+  - **Location**: Found in the `\logs` folder at the root of the solution.
+  - **Files**: `etl-*.log` (captures harvesting and persistence events).
 
 # **Data Models**
 
@@ -61,8 +83,7 @@ The Hub tracks datasets through three primary states in the workflow:
 
 # **Accessing the Interface**
 
-To interact with the Hub manually, use the built-in Swagger UI:
+To interact with the Hub manually, use the built-in **Swagger UI**:
 1. Start the application.
-2. Navigate to: `http://localhost:PORT/swagger`
+2. Navigate to: `http://localhost:5133/swagger` (default port).
 3. Manually trigger **Discovery** and **Extraction** by clicking "Try it out."
-

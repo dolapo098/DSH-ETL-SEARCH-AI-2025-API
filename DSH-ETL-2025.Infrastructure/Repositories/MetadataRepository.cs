@@ -13,7 +13,7 @@ public class MetadataRepository : BaseRepository<MetadataDocument>, IMetadataRep
     }
 
     /// <inheritdoc />
-    public async Task SaveDocumentAsync(string identifier, int datasetMetadataID, string document, DocumentType type)
+    public async Task SaveDocumentAsync(string identifier, int datasetMetadataID, string document, DocumentType type, string contentHash)
     {
         var existing = await _dbContext.MetadataDocuments
             .FirstOrDefaultAsync(d => d.FileIdentifier == identifier && d.DocumentType == type);
@@ -22,6 +22,7 @@ public class MetadataRepository : BaseRepository<MetadataDocument>, IMetadataRep
         {
             existing.RawDocument = document;
             existing.DatasetMetadataID = datasetMetadataID;
+            existing.ContentHash = contentHash;
 
             await UpdateAsync(existing);
         }
@@ -33,9 +34,16 @@ public class MetadataRepository : BaseRepository<MetadataDocument>, IMetadataRep
                 FileIdentifier = identifier,
                 DocumentType = type,
                 RawDocument = document,
+                ContentHash = contentHash,
                 CreatedAt = DateTime.UtcNow
             });
         }
     }
-}
 
+    /// <inheritdoc />
+    public async Task<MetadataDocument?> GetDocumentAsync(string identifier, DocumentType type)
+    {
+        return await _dbContext.MetadataDocuments
+            .FirstOrDefaultAsync(d => d.FileIdentifier == identifier && d.DocumentType == type);
+    }
+}

@@ -10,6 +10,8 @@ using DSH_ETL_2025.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace DSH_ETL_2025.UnitTests.Services;
 
@@ -110,13 +112,26 @@ public class EtlServiceTests
             Description = "Test Description"
         };
 
+        // For DocumentType.Json and "{}"
+        string docHash = ComputeHash("{}");
+        string combinedHash = ComputeHash(docHash);
+
         var queueItem = new DatasetSupportingDocumentQueue
         {
             DatasetMetadataID = 1,
             ProcessedTitleForEmbedding = true,
             ProcessedAbstractForEmbedding = true,
             ProcessedSupportingDocsForEmbedding = true,
-            IsProcessing = false
+            IsProcessing = false,
+            LastProcessedHash = combinedHash
+        };
+
+        var existingDoc = new MetadataDocument
+        {
+            DatasetMetadataID = 1,
+            FileIdentifier = _testIdentifier,
+            DocumentType = DocumentType.Json,
+            ContentHash = docHash
         };
 
         _datasetMetadataRepoMock.Setup(r => r.GetMetadataAsync(_testIdentifier))
@@ -124,6 +139,9 @@ public class EtlServiceTests
 
         _queueRepoMock.Setup(r => r.GetQueueItemByMetadataIdAsync(1))
             .ReturnsAsync(queueItem);
+
+        _metadataRepoMock.Setup(r => r.GetDocumentAsync(_testIdentifier, DocumentType.Json))
+            .ReturnsAsync(existingDoc);
     }
 
     private void SetupPartiallyProcessedDataset()
@@ -193,6 +211,14 @@ public class EtlServiceTests
     {
         _jsonProcessorMock.Setup(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, It.IsAny<IRepositoryWrapper>()))
             .ThrowsAsync(new Exception("Processing failed"));
+    }
+
+    private string ComputeHash(string input)
+    {
+        using var sha256 = SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(input);
+        var hashBytes = sha256.ComputeHash(bytes);
+        return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
     }
 
     [TestMethod]
@@ -274,7 +300,7 @@ public class EtlServiceTests
         Assert.IsTrue(result.Message.Contains("already fully processed"));
         Assert.IsTrue(result.Message.Contains("Skipped"));
 
-        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier), Times.Never);
+        _metadataExtractorMock.Verify(e => e.ExtractAllFormatsAsync(_testIdentifier), Times.Once);
         _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, It.IsAny<IRepositoryWrapper>()), Times.Never);
 
         _loggerMock.Verify(
@@ -343,4 +369,3 @@ public class EtlServiceTests
         _jsonProcessorMock.Verify(p => p.ProcessAsync(It.IsAny<string>(), _testIdentifier, _repositoryWrapperMock.Object), Times.Once);
     }
 }
-
