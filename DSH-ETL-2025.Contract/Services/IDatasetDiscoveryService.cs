@@ -3,22 +3,27 @@ using DSH_ETL_2025.Contract.ResponseDtos;
 namespace DSH_ETL_2025.Contract.Services;
 
 /// <summary>
-/// Defines the contract for dataset discovery and search operations.
+/// Service for discovering datasets through search and retrieving details.
 /// </summary>
 public interface IDatasetDiscoveryService
 {
     /// <summary>
-    /// Retrieves full details of a dataset by its identifier asynchronously.
+    /// Gets full details for a dataset by its identifier.
     /// </summary>
-    /// <param name="identifier">The identifier of the dataset.</param>
-    /// <returns>A task that represents the asynchronous operation. The task result contains the full dataset details, or null if not found.</returns>
+    /// <param name="identifier">The dataset file identifier.</param>
+    /// <returns>The dataset details or null if not found.</returns>
     Task<DatasetFullDetailsDto?> GetDatasetDetailsAsync(string identifier);
 
     /// <summary>
-    /// Searches datasets by query string asynchronously.
+    /// Searches for datasets matching a query string.
     /// </summary>
-    /// <param name="query">The search query string.</param>
-    /// <returns>A task that represents the asynchronous operation. The task result contains a list of matching dataset metadata.</returns>
+    /// <param name="query">The keyword query.</param>
+    /// <returns>A list of matching dataset metadata.</returns>
     Task<List<DatasetMetadataResultDto>> SearchDatasetsAsync(string query);
-}
 
+    /// <summary>
+    /// Retrieves high-level statistics about datasets and providers.
+    /// </summary>
+    /// <returns>The discovery statistics DTO.</returns>
+    Task<DiscoveryStatsDto> GetDiscoveryStatsAsync();
+}

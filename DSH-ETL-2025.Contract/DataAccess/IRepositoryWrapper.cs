@@ -13,6 +13,11 @@ public interface IRepositoryWrapper
     IDatasetMetadataRepository DatasetMetadata { get; }
 
     /// <summary>
+    /// Gets the datasets repository for aggregated operations.
+    /// </summary>
+    IDatasetRepository Datasets { get; }
+
+    /// <summary>
     /// Gets the metadata repository.
     /// </summary>
     IMetadataRepository Metadata { get; }

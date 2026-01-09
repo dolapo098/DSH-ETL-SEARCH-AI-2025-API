@@ -8,6 +8,7 @@ public class RepositoryWrapper : IRepositoryWrapper
 {
     private readonly EtlDbContext _dbContext;
     private IDatasetMetadataRepository? _datasetMetadata;
+    private IDatasetRepository? _datasets;
     private IMetadataRepository? _metadata;
     private IDatasetGeospatialDataRepository? _datasetGeospatialData;
     private IDataFileRepository? _dataFiles;
@@ -23,6 +24,10 @@ public class RepositoryWrapper : IRepositoryWrapper
     /// <inheritdoc />
     public IDatasetMetadataRepository DatasetMetadata => 
         _datasetMetadata ??= new DatasetMetadataRepository(_dbContext);
+
+    /// <inheritdoc />
+    public IDatasetRepository Datasets => 
+        _datasets ??= new DatasetRepository(_dbContext);
 
     /// <inheritdoc />
     public IMetadataRepository Metadata => 

@@ -16,34 +16,42 @@ public class SearchController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<DatasetMetadataResultDto>>> Search([FromQuery] string q)
+    public async Task<List<DatasetMetadataResultDto>> Search([FromQuery] string q)
     {
-        if (string.IsNullOrWhiteSpace(q))
+        if ( string.IsNullOrWhiteSpace(q) )
         {
-            return BadRequest("Query cannot be empty.");
+            throw new ArgumentException("Query cannot be empty.", nameof(q));
         }
 
-        List<DatasetMetadataResultDto> results = await _discoveryService.SearchDatasetsAsync(q);
+        var results = await _discoveryService.SearchDatasetsAsync(q);
 
-        return Ok(results);
+        return results;
     }
 
     [HttpGet("details/{identifier}")]
-    public async Task<ActionResult<DatasetFullDetailsDto>> GetDetails(string identifier)
+    public async Task<DatasetFullDetailsDto> GetDetails(string identifier)
     {
-        if (string.IsNullOrWhiteSpace(identifier))
+        if ( string.IsNullOrWhiteSpace(identifier) )
         {
-            return BadRequest("Identifier cannot be empty.");
+            throw new ArgumentException("Identifier cannot be empty.", nameof(identifier));
         }
 
-        DatasetFullDetailsDto? details = await _discoveryService.GetDatasetDetailsAsync(identifier);
+        var details = await _discoveryService.GetDatasetDetailsAsync(identifier);
 
-        if (details == null)
+        if ( details == null )
         {
-            return NotFound($"Dataset with identifier '{identifier}' not found.");
+            throw new KeyNotFoundException($"Dataset with identifier '{identifier}' not found.");
         }
 
-        return Ok(details);
+        return details;
+    }
+
+    [HttpGet("stats")]
+    public async Task<DiscoveryStatsDto> GetStats()
+    {
+        var stats = await _discoveryService.GetDiscoveryStatsAsync();
+
+        return stats;
     }
 }
 

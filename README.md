@@ -1,89 +1,174 @@
-[[_TOC_]]
+# Dataset Ingestion Hub
 
-# **Overview**
+## Overview
 
-The **Dataset Ingestion Hub** is the administrative gateway for the ETL (Extract, Transform, Load) pipeline. It manages the lifecycle of dataset records by discovering updates from remote sources, extracting detailed metadata, and tracking the status of AI-powered document analysis.
+The **Dataset Ingestion Hub** is the administrative gateway for the ETL (Extract, Transform, Load) pipeline. It manages the complete lifecycle of dataset records by discovering updates from remote sources, extracting detailed metadata from multiple formats (ISO 19115, JSON, JSON-LD, RDF), and orchestrating AI-powered document analysis through integration with the Python Search Service.
 
-# **Requirements**
-- **Runtime**: .NET 8.0 / .NET 9.0
-- **Database**: SQLite (`etl_database.db`)
-- **Unit Testing**: MSTest
-- **Integration**: Requires a connection to the Python Search Service for vector indexing.
+Key capabilities include:
 
-# **Software Engineering & Architecture**
+- **Dataset Discovery**: Automated synchronization with remote catalog services
+- **Metadata Extraction**: Multi-format parsing (ISO 19115, JSON, RDF/Turtle)
+- **ETL Orchestration**: Complete pipeline management with status tracking
+- **AI Integration**: Seamless handoff to Python service for vector indexing
+- **Data Relationships**: Tracks parent-child and sibling relationships between datasets
 
-The system is built using **Clean Architecture** principles, prioritizing decoupling, testability, and scalability.
+---
 
-### **Design Patterns & Engineering Approach**
-- **Dependency Injection (DI)**: Inversion of Control is the core engineering approach, ensuring that services, repositories, and extractors are loosely coupled and easily swapped or mocked for testing.
-- **Strategy Pattern**: Employed for **Document Processors** and **Metadata Parsers**. This allows the Hub to dynamically select the correct processing logic based on the document type (ISO 19115, JSON, RDF) without modifying the core ETL service.
-- **Generic Repository & Unit of Work (UoW)**: Data access is abstracted through a generic repository pattern. The **Repository Wrapper** acts as a Unit of Work, ensuring that all database operations within a processing cycle are handled within a single transaction for data integrity.
+## Requirements
 
-# **Setup**
+| Component       | Specification                     |
+| --------------- | --------------------------------- |
+| **Runtime**     | .NET 8.0 0                        |
+| **Database**    | SQLite (`etl_database.db`)        |
+| **Integration** | Python Search Service (port 8001) |
+| **Testing**     | MSTest                            |
+| **Logging**     | Serilog (Console + File)          |
 
-## **Service Registration**
+---
 
-The Hub utilizes a background worker (`EmbeddingProcessingService`) to monitor and trigger processing.
+## Setup
 
-1. Ensure the `EtlSettings:PythonServiceUrl` in `appsettings.json` is reachable.
-2. The system will automatically initialize the SQLite database on first launch.
+### 1. Prerequisites
 
-# **Database & Storage**
+- Install .NET 8.0 SDK or later
+- Ensure Python Search Service is running (see Python service README)
+- SQLite database will be auto-created on first launch
 
-The database and logging system share the same space at the root of the solution, ensuring a centralized location for persistence and audit trails.
+### 2. Configuration
 
-- **Relational Database (SQLite)**: 
-  - **File Name**: `etl_database.db`
-  - **Physical Location**: Accessible within the same directory as the project folder (at the root of the solution).
+Update `appsettings.json` with your settings:
 
-- **System Logs**:
-  - **Location**: Found in the `\logs` folder at the root of the solution.
-  - **Files**: `etl-*.log` (captures harvesting and persistence events).
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Data Source=../../etl_database.db"
+  },
+  "EtlSettings": {
+    "MetadataIdentifiersFilePath": "../../metadata-file-identifiers.txt",
+    "PythonServiceUrl": "http://localhost:8001",
+    "MaxDegreeOfParallelism": 10
+  }
+}
+```
 
-# **Data Models**
+### 3. Database & Storage
 
-The following models define the core entities within the ingestion ecosystem:
+- **SQLite Database**: `etl_database.db` (shared with Python service)
+- **Logs**: `logs/etl-*.log` (daily rolling logs)
+- **Metadata Identifiers**: Text file containing dataset file identifiers for discovery
 
-| Model | Purpose | Key Responsibilities |
-|--|--|--|
-| **`DatasetMetadata`** | **Core Identity** | Acts as the central record for a dataset. Stores Title, Abstract, and unique File Identifier. |
-| **`MetadataDocument`** | **Raw Storage** | Stores original, unparsed metadata files (e.g., JSON or ISO 19115) for auditing. |
-| **`SupportingDocument`** | **Resource Link** | Tracks documentation related to a dataset (e.g., PDF reports) including download URLs. |
-| **`DataFile`** | **Data Payload** | Represents the actual scientific data files intended for end-user download. |
-| **`DatasetGeospatialData`** | **Location Data** | Stores geographic footprints (Bounding Boxes) for map-based discovery. |
-| **`DatasetRelationship`** | **Connectivity** | Maps Parent, Child, or Sibling links between different scientific records. |
-| **`DatasetSupportingDocumentQueue`** | **AI Orchestration** | Tracks which datasets are pending, in-progress, or completed for AI indexing. |
+### 4. Run the Service
 
-# **User Guide**
+```bash
+# Navigate to the API project
+cd DSH-ETL-2025-API
 
-## **The Data Journey**
+# Restore dependencies
+dotnet restore
 
-The Hub tracks datasets through three primary states in the workflow:
+# Run the service
+dotnet run --project DSH-ETL-2025-API
+```
 
-|Phase|Process|Description|
-|--|--|--|
-|**1. Discovery**|Remote Synchronization|Scans external APIs to identify new datasets or updates to existing records.|
-|**2. Extraction**|Metadata Ingestion|Parses raw documents to store Title, Abstract, and resource links.|
-|**3. Queueing**|Intelligence Scheduling|Flags the dataset in the Queue to notify the AI engine that content is ready.|
+**API Documentation**: http://localhost:5133/swagger
 
-# **Operating Instructions**
+---
 
-## **Triggering a Processing Cycle**
-1. **Discovery**: Use the Hub to perform a "Discover All" operation. This populates the local database with new dataset "stubs."
-2. **Extraction**: Once discovered, trigger the Extraction service. This reads full metadata and finds links to PDFs and Word documents.
-3. **Queue Monitoring**: The Hub will automatically add these records to the **AI Queue**. No manual file preparation is required.
+## User Guide
 
-# **Troubleshooting**
+The following table describes all available functionalities in the system:
 
-|Issue|Potential Cause|Resolution|
-|--|--|--|
-|**Discovery Fails**|External API is offline.|Wait 5 minutes and retry the "Discover All" command.|
-|**Status Stuck at 'Pending'**|Background Worker is inactive.|Check console logs to ensure `EmbeddingProcessingService` is active.|
-|**'Python Service Unreachable'**|Intelligence Engine is down.|Ensure the Python app is running and the URL in `appsettings.json` is correct.|
+| Functionality              | Endpoint                           | Method | Description                                                                                                                                                   | Use Case                                                                  |
+| -------------------------- | ---------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| **Search Datasets**        | `/api/search?q={query}`            | GET    | Performs keyword-based search across dataset metadata (title, abstract). Returns matching datasets with basic information.                                    | Quick keyword lookup for datasets by title or description                 |
+| **Get Dataset Details**    | `/api/search/details/{identifier}` | GET    | Retrieves complete dataset information including metadata, geospatial data, relationships, supporting documents, and data files.                              | View full dataset profile with all associated resources and relationships |
+| **Get Discovery Stats**    | `/api/search/stats`                | GET    | Returns high-level statistics about the dataset catalog: total datasets count and total unique data providers.                                                | Dashboard metrics and system health monitoring                            |
+| **Process Single Dataset** | `/api/etl/process/{identifier}`    | POST   | Triggers the complete ETL pipeline for a specific dataset: discovery, metadata extraction, document parsing, and queueing for AI indexing.                    | Reprocess a specific dataset or handle individual dataset ingestion       |
+| **Process All Datasets**   | `/api/etl/process-all`             | POST   | Executes the ETL pipeline for all datasets listed in the metadata identifiers file. Processes datasets in parallel (configurable via MaxDegreeOfParallelism). | Initial bulk ingestion or full catalog refresh                            |
+| **Get ETL Status**         | `/api/etl/status`                  | GET    | Returns current ETL processing status including active operations, queue depth, and processing metrics.                                                       | Monitor ETL pipeline health and track processing progress                 |
 
-# **Accessing the Interface**
+### Example Usage
 
-To interact with the Hub manually, use the built-in **Swagger UI**:
-1. Start the application.
-2. Navigate to: `http://localhost:5133/swagger` (default port).
-3. Manually trigger **Discovery** and **Extraction** by clicking "Try it out."
+#### Search Datasets
+
+```http
+GET /api/search?q=water quality
+```
+
+#### Get Dataset Details
+
+```http
+GET /api/search/details/b0afb78e-1234-5678-90ab-cdef12345678
+```
+
+#### Process Single Dataset
+
+```http
+POST /api/etl/process/b0afb78e-1234-5678-90ab-cdef12345678
+```
+
+#### Get ETL Status
+
+```http
+GET /api/etl/status
+```
+
+---
+
+## Architecture
+
+The system follows **Clean Architecture** principles with clear separation of concerns:
+
+- **Controllers**: Handle HTTP requests/responses
+- **Application Services**: Business logic orchestration
+- **Infrastructure**: Data access, external integrations, and background workers
+- **Domain**: Core entities and value objects
+- **Contracts**: Interfaces and DTOs for inter-layer communication
+
+### Key Design Patterns
+
+- **Dependency Injection (DI)**: Inversion of Control for loose coupling and testability
+- **Strategy Pattern**: Document processors and metadata parsers selected dynamically by document type
+- **Repository Pattern**: Abstracted data access with generic repositories
+- **Unit of Work (UoW)**: Transaction management via `IRepositoryWrapper`
+- **Background Services**: `EmbeddingProcessingService` monitors and triggers AI indexing
+
+### Data Models
+
+| Model                                | Purpose          | Key Responsibilities                                                  |
+| ------------------------------------ | ---------------- | --------------------------------------------------------------------- |
+| **`DatasetMetadata`**                | Core Identity    | Central record storing Title, Abstract, and unique File Identifier    |
+| **`MetadataDocument`**               | Raw Storage      | Original, unparsed metadata files (JSON, ISO 19115) for auditing      |
+| **`SupportingDocument`**             | Resource Link    | Tracks documentation (PDF reports) including download URLs            |
+| **`DataFile`**                       | Data Payload     | Represents actual scientific data files for end-user download         |
+| **`DatasetGeospatialData`**          | Location Data    | Stores geographic footprints (Bounding Boxes) for map-based discovery |
+| **`DatasetRelationship`**            | Connectivity     | Maps Parent, Child, or Sibling links between scientific records       |
+| **`DatasetSupportingDocumentQueue`** | AI Orchestration | Tracks datasets pending, in-progress, or completed for AI indexing    |
+
+---
+
+## Troubleshooting
+
+| Issue                          | Potential Cause               | Resolution                                                            |
+| ------------------------------ | ----------------------------- | --------------------------------------------------------------------- |
+| **Discovery Fails**            | External API is offline       | Wait 5 minutes and retry the "Process All" command                    |
+| **Status Stuck at 'Pending'**  | Background Worker inactive    | Check console logs to ensure `EmbeddingProcessingService` is active   |
+| **Python Service Unreachable** | Intelligence Engine is down   | Ensure Python app is running and URL in `appsettings.json` is correct |
+| **Database Locked**            | Concurrent access             | Ensure only one instance of the service is running                    |
+| **Processing Timeout**         | Large dataset or slow network | Increase timeout settings or process datasets individually            |
+
+---
+
+## Verification & Testing
+
+1. Navigate to: http://localhost:5133/swagger
+2. Use the `/api/search/stats` endpoint to verify database connectivity
+3. Trigger `/api/etl/process-all` to start ingestion
+4. Monitor logs in `logs/etl-*.log` for processing status
+5. Check `/api/etl/status` to track processing progress
+
+---
+
+## License
+
+This project is part of the DSH ETL Search & Discovery Platform.

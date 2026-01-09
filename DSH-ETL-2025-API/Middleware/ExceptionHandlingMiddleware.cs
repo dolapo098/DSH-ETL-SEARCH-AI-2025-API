@@ -29,12 +29,22 @@ public class ExceptionHandlingMiddleware
     {
         context.Response.ContentType = "application/json";
 
-        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+        var statusCode = exception switch
+        {
+            ArgumentException => HttpStatusCode.BadRequest,
+            ArgumentNullException => HttpStatusCode.BadRequest,
+            KeyNotFoundException => HttpStatusCode.NotFound,
+            _ => HttpStatusCode.InternalServerError
+        };
+
+        context.Response.StatusCode = (int)statusCode;
 
         var response = new
         {
             StatusCode = context.Response.StatusCode,
-            Message = "Internal Server Error from the custom middleware.",
+            Message = statusCode == HttpStatusCode.InternalServerError 
+                ? "Internal Server Error from the custom middleware." 
+                : exception.Message,
             Detailed = exception.Message
         };
 
